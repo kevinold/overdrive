@@ -1,0 +1,12 @@
+{
+  "contextFileName": "GEMINI.md",
+  "mcpServers": {
+    "context7": {
+      "httpUrl": "https://mcp.context7.com/mcp"
+    },
+    "codebase-memory-mcp": {
+      "command": "mise",
+      "args": ["exec", "--", "codebase-memory-mcp"]
+    }
+  }
+}

@@ -1,0 +1,9 @@
+# mise pins — required so `mise exec -- codebase-memory-mcp` works on a fresh clone.
+# See docs/harness-inventory.md.
+[tools]
+"github:DeusData/codebase-memory-mcp" = "0.10.8"
+act = "latest"
+actionlint = "latest"
+gh = "latest"
+jq = "latest"
+aws = "latest"

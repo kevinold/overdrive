@@ -1,0 +1,8 @@
+# Model gears. See AGENTS.md "Model gears" + "Egress disclosure".
+plan_model: fable
+brainstorm_model: fable
+
+# Peer review by a different, third-party model (codex/OpenAI).
+# EGRESS: sends full file/document content off your Claude provider.
+# Opt-in decision — weigh against your repo's data sensitivity. Unset to disable.
+cross_model_peer: codex

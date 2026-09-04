@@ -1,0 +1,10 @@
+# Reference only. Codex reads ~/.codex/config.toml, NOT this repo file.
+# `bootstrap.sh` runs `codex mcp add` to register these servers into your
+# real ~/.codex/config.toml. This file documents the intended shape.
+
+[mcp_servers.context7]
+url = "https://mcp.context7.com/mcp"
+
+[mcp_servers.codebase-memory-mcp]
+command = "mise"
+args = ["exec", "--", "codebase-memory-mcp"]
