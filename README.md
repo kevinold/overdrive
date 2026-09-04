@@ -22,8 +22,7 @@ full harness. This README does not claim parity.
 
 ```bash
 git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh                 # lean core: compound-engineering + 2 MCP + gears + validation
-bash scripts/bootstrap.sh --with-extras   # + opt-in plugins (wshobson packs, pm-rituals, frontend-design, ralph-*)
+bash scripts/bootstrap.sh                 # installs the whole harness
 bash scripts/bootstrap.sh --dry-run       # print every action, mutate nothing
 ```
 

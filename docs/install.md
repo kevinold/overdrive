@@ -27,8 +27,8 @@ per-site permission prompts. Grant the minimum the task needs.
 ## Claude Code (full harness)
 
 ```bash
-bash scripts/bootstrap.sh            # lean core
-bash scripts/bootstrap.sh --with-extras   # + opt-in plugins
+bash scripts/bootstrap.sh            # installs the whole harness
+bash scripts/bootstrap.sh --dry-run  # print every action, mutate nothing
 ```
 
 Then paste the printed `/plugin marketplace add` and `/plugin install` lines into Claude

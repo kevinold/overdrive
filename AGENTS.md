@@ -18,8 +18,8 @@ the MCP servers — **not** the full harness. Do not assume parity.
 
 ```bash
 git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh            # lean core: compound-engineering + 2 MCP + gears + validation
-bash scripts/bootstrap.sh --with-extras   # adds the opt-in plugins (wshobson packs, pm-rituals, frontend-design, ralph-*)
+bash scripts/bootstrap.sh            # installs the whole harness
+bash scripts/bootstrap.sh --dry-run  # prints every action, changes nothing
 ```
 
 Review `docs/harness-inventory.md` and `docs/install.md` before running bootstrap on a
@@ -36,6 +36,15 @@ Three gears, never one model:
   model adversarially re-reviews. Never trust one model's output.
 
 `~/.claude/settings.json` `model` is the fallback/subagent default, not the driver.
+
+## House style
+
+Two behavior plugins run by default. They set how the agent works, not what it builds.
+
+- **ponytail**: build the least code that works. Reuse before you add. Question whether a piece needs to exist.
+- **caveman**: keep output terse. Signal, not filler.
+
+Toggle per session: `/ponytail lite|full|ultra`, `/caveman lite|full|ultra`. Turn off with `stop ponytail` or `stop caveman`.
 
 ## Egress disclosure (important)
 

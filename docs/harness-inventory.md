@@ -32,15 +32,11 @@ Install form: `/plugin marketplace add <owner/repo>` then
 
 The seven `claude-code-workflows` packs (wshobson/agents) are the "wshobson packs."
 
-### Core vs. extras (D5)
+### What bootstrap installs
 
-`bootstrap.sh` defaults to a **lean core** and gates the rest behind `--with-extras`.
-
-- **Core (default):** compound-engineering + the 2 MCP servers + the model gears +
-  the validation layer (`.claude/agents/ui-visual-validator.md`).
-- **Extras (`--with-extras`):** the wshobson `claude-code-workflows` packs, pm-rituals,
-  frontend-design, ralph-loop, ralph-wiggum, caveman, ponytail, agent-browser,
-  typescript-lsp, skill-creator, compound-writing — "beyond-SDLC extras."
+`bootstrap.sh` installs the whole harness in one pass: every plugin listed above, the 2 MCP
+servers, the model gears, and the validation layer (`.claude/agents/ui-visual-validator.md`).
+There is no lean/extras split. Run `bootstrap.sh --dry-run` to see every action first.
 
 ## MCP servers
 
