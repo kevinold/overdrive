@@ -4,130 +4,52 @@
 
 ---
 
-You hit the weekly limit on a Wednesday, mid-feature, and it lands like a betrayal. So you scroll back through the session to see where it all went — and the surprise is that it didn't go to the feature. It went to overhead: the four times you re-pasted the same project context because the agent forgot it, the search that dumped forty files into the window you needed for thinking, the plan you walked your most expensive model through twice because it wandered.
+You hit the weekly limit mid-feature, and it stings. Scroll back to see where it went, and it wasn't the feature — it was overhead: re-pasting the context the agent forgot, a search that dumped forty files into the window you were thinking in, your most expensive model talked through the same plan twice.
 
-The limits aren't the problem. What you do inside them is. Most people are driving a race car in first gear — one heavy model doing everything, the whole project re-explained every session, tool output dumped straight into the main context window, and the same bug rediscovered on Thursday that they already solved on Monday. Of course the meter moves. It's moving on overhead.
+**The limits aren't the problem. What you do inside them is.** Most setups run in first gear — one heavy model doing everything, the project re-explained every session, tool output dumped into the main window, Monday's bug rediscovered on Thursday. Overdrive is the same engine in a higher gear: a cheap worker model does the typing, your project stays **cached** instead of re-sent, **subagents** run the messy searches and hand back just the answer, a **second model** reviews the diff, and every fix gets **written down** so you never learn it twice. Same budget — more of it spent on the feature.
 
-The fix isn't more tokens. It's a harness: the right tools, assembled, so the tokens go to *outcomes* instead of ceremony. That's what this is — and it's one `git clone` and one command away.
+It's a harness: the right tools, assembled, one `git clone` and one command away.
 
-> **The 20-second version (for people who won't read the rest)**
+> **The 20-second version**
 >
-> - **What it is:** a starter repo that assembles the right tools — plugins, MCP servers, model "gears," hooks — around your coding agent. Not a bag of tricks; an intentional set.
-> - **Why it matters:** it makes your token usage *more effective* by putting the cheap model on the typing and the expensive reasoning only where reasoning pays. It's the SDLC you already run — plan, build, test, review, ship, learn — accelerated, not skipped.
-> - **How to get it:** `git clone git@github.com:kevinold/overdrive.git && bash scripts/bootstrap.sh`
-> - **The moat:** it compounds. Every fix gets written down, so the next session starts from the answer instead of rediscovering it.
+> - **What:** a starter repo that assembles the right tools around your coding agent — a worker / reasoning / review **model split**, a **cached project contract**, a **code-graph memory**, **live docs**, **isolated subagents**, and a **growing log of solved problems**.
+> - **Why:** your tokens go to outcomes, not overhead — the SDLC you already run (plan, build, test, review, ship, learn), accelerated, not skipped.
+> - **How:** `git clone git@github.com:kevinold/overdrive.git && bash scripts/bootstrap.sh`
+> - **The moat:** every fix gets written down, so the next session starts from the answer.
 
-## You're rationing the wrong thing
-
-Think of your usage limit as a budget and the harness as a transmission.
-
-In first gear, every turn pays full freight — nothing is set up to make the next turn cheaper, so effort and output stay the same number.
-
-Overdrive is the same engine in a higher gear. A cheap worker model does the driving. The big context is cached and reused instead of re-sent. Subagents go do the messy work and hand back only the answer. And the things you learn get written down so you never pay to learn them twice.
-
-One caveat up front, because someone will raise it: caching *amortizes* the harness cost across a session — it doesn't erase it. The first turn of a fresh session pays more, not less; a bigger harness means a bigger warm-up. The win is everything that happens across the turns after. Spin it up and then do nothing with it and yes, you'll pay for the warm-up and get nothing back — but that's a not-actually-working-yet problem, not a limits problem.
+One caveat, because someone will raise it: caching *amortizes* the cost across a session — it doesn't erase it. The first turn of a fresh session pays more, not less: bigger harness, bigger warm-up. The win is every turn after. This is for people who actually work a session, not type one line and leave.
 
 Here's the whole machine on one page:
 
-<svg viewBox="0 0 860 300" role="img" aria-label="The overdrive harness as an SDLC loop: Plan, Build, Test, Review, Ship, Learn, looping back to Plan, over a foundation of caching, model gears, 3-layer memory, and hooks." style="width:100%;height:auto;font-family:ui-sans-serif,system-ui,sans-serif;">
-  <defs>
-    <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
-      <path d="M0,0 L10,5 L0,10 z" fill="#94a3b8"/>
-    </marker>
-  </defs>
-  <!-- phase boxes -->
-  <g>
-    <!-- Plan -->
-    <rect x="16" y="40" width="120" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="76" y="66" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Plan</text>
-    <text x="76" y="86" text-anchor="middle" font-size="10" fill="#475569">Fable escalates</text>
-    <!-- Build -->
-    <rect x="176" y="40" width="120" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="236" y="66" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Build</text>
-    <text x="236" y="86" text-anchor="middle" font-size="10" fill="#475569">worker drives</text>
-    <!-- Test -->
-    <rect x="336" y="40" width="120" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="396" y="66" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Test</text>
-    <text x="396" y="86" text-anchor="middle" font-size="10" fill="#475569">Vitest + Cypress</text>
-    <!-- Review -->
-    <rect x="496" y="40" width="120" height="60" rx="10" fill="#fef2f2" stroke="#dc2626" stroke-width="1.5"/>
-    <text x="556" y="66" text-anchor="middle" font-size="15" font-weight="700" fill="#991b1b">Review</text>
-    <text x="556" y="86" text-anchor="middle" font-size="10" fill="#475569">codex peer</text>
-    <!-- Ship -->
-    <rect x="656" y="40" width="88" height="60" rx="10" fill="#eef2ff" stroke="#6366f1" stroke-width="1.5"/>
-    <text x="700" y="66" text-anchor="middle" font-size="15" font-weight="700" fill="#3730a3">Ship</text>
-    <text x="700" y="86" text-anchor="middle" font-size="10" fill="#475569">PR + babysit</text>
-    <!-- Learn -->
-    <rect x="764" y="40" width="80" height="60" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.5"/>
-    <text x="804" y="63" text-anchor="middle" font-size="14" font-weight="700" fill="#065f46">Learn</text>
-    <text x="804" y="83" text-anchor="middle" font-size="9" fill="#475569">/ce-compound</text>
-  </g>
-  <!-- arrows between phases -->
-  <g stroke="#94a3b8" stroke-width="1.6" fill="none" marker-end="url(#arrow)">
-    <line x1="138" y1="70" x2="174" y2="70"/>
-    <line x1="298" y1="70" x2="334" y2="70"/>
-    <line x1="458" y1="70" x2="494" y2="70"/>
-    <line x1="618" y1="70" x2="654" y2="70"/>
-    <line x1="746" y1="70" x2="762" y2="70"/>
-  </g>
-  <!-- loop-back arrow: Learn -> Plan -->
-  <path d="M 804 100 C 804 150, 76 150, 76 102" stroke="#94a3b8" stroke-width="1.6" fill="none" marker-end="url(#arrow)"/>
-  <text x="440" y="145" text-anchor="middle" font-size="10" fill="#64748b" font-style="italic">each cycle starts from the last one's learnings</text>
-  <!-- foundations bar -->
-  <rect x="16" y="200" width="828" height="72" rx="12" fill="#f8fafc" stroke="#cbd5e1" stroke-width="1.5"/>
-  <text x="430" y="222" text-anchor="middle" font-size="11" font-weight="700" fill="#334155" letter-spacing="0.5">FOUNDATIONS UNDER EVERY PHASE</text>
-  <g font-size="12" fill="#475569" text-anchor="middle">
-    <text x="130" y="250" font-weight="600" fill="#334155">Caching</text>
-    <text x="130" y="266" font-size="10">reuse, not re-send</text>
-    <text x="330" y="250" font-weight="600" fill="#334155">Model gears</text>
-    <text x="330" y="266" font-size="10">right model per phase</text>
-    <text x="540" y="250" font-weight="600" fill="#334155">3-layer memory</text>
-    <text x="540" y="266" font-size="10">tokens · code graph · knowledge</text>
-    <text x="730" y="250" font-weight="600" fill="#334155">Hooks</text>
-    <text x="730" y="266" font-size="10">automation</text>
-  </g>
-</svg>
+![The overdrive harness as an SDLC loop — Plan, Build, Test, Review, Ship, Learn cycling back to Plan, over a base layer of caching, model gears, 3-layer memory, and hooks.](overdrive-sdlc-loop.svg)
 
 <sub>*Prefer to poke at it? An [interactive version](overdrive-sdlc.html) — pan, zoom, theme-switch, export PNG — lives alongside this post.*</sub>
 
 The rest of this post walks that diagram. Read it top to bottom or skip to the phase you care about.
 
-## The SDLC, accelerated
+## What's actually in the harness
 
-The most common objection to any of this is that it's "vibe-coding with extra steps." It isn't, and the reason is the diagram above: every tool maps to a phase of the software lifecycle you already run. The harness doesn't let you skip planning, testing, or review. It makes doing them *cheaper than not doing them*.
+The harness is a stack of layers, each doing one job. Here's every layer worth naming — what it is, and why it earns its place. Bottom-up: the foundations that make each turn cheaper, the gears that decide which model does what, the phase tools that turn the SDLC from a tax into an accelerant, and the glue that ties them together.
 
-And it's enforced, not just encouraged. A hook can fire the moment an implementation plan lands without a spec check, or re-index the code graph on session start — automation that gates behavior instead of trusting you to remember. That's what puts teeth in "not vibe-coding": something actually fires.
+### The foundation: make every turn cheaper
 
-Before the phases, the foundations that sit under all of them.
+**The cached contract — `AGENTS.md` (and `CLAUDE.md`).** Your conventions, your project's shape, the rules you always want followed — none of it changes turn to turn, so a stable file at the repo root states it once and the model reads it from cache instead of you re-explaining. It's the difference between an agent that forgets your project every morning and one that shows up already knowing it.
 
-**Caching.** Your instructions, conventions, and the shape of your project don't change turn to turn, so they shouldn't be re-sent turn to turn. A stable `AGENTS.md` at the repo root is the cached contract; skills load their bodies only when invoked. The big deposit happens once and gets reused — which is exactly why the first turn of a fresh session looks expensive and the fiftieth turn doesn't.
+**`codebase-memory-mcp` — a queryable map of your code.** A local code graph of the whole repo, with every symbol, call, and reference indexed. Instead of reading ten files into its context to answer "what calls this function?", the agent *asks the graph* and gets the answer in a line. Navigation replaces re-reading — which is where a large share of a working session's tokens quietly go.
 
-**Model gears** — the heart of it, so it gets its own section below.
+**`context7` — current docs, on tap.** It pulls real, version-correct documentation for a library at the moment the agent needs it. That's the layer that kills the classic failure where the model confidently writes against an API that changed two versions ago. Looked up, not hallucinated.
 
-**Three-layer memory.** Three different things get remembered at three different horizons: the prompt cache holds *tokens* within a session; `codebase-memory-mcp` holds a *code graph* you query instead of re-reading files; and `docs/solutions/` plus file-memory hold *durable knowledge* across sessions. Different caches, different lifespans, one principle — don't pay twice for the same thing.
+**Three memories, three horizons.** Those last two aren't the same thing, and neither is the third, so it's worth seeing them as one layered memory. The prompt cache holds *this session's tokens*. `codebase-memory-mcp` holds *your code's shape*. `docs/solutions/` plus file-memory hold *durable knowledge* across sessions. Different caches, different lifespans, one rule: don't pay twice for the same thing.
 
-**Hooks.** The automation layer. Re-index the code graph on session start; gate spec-less plans; keep the workspace honest without you thinking about it.
+**Hooks — the automation you'd forget.** Small scripts the harness runs on your behalf: re-index the code graph when a session starts; fire a gate the moment a plan lands without a spec check. This is also what makes "not vibe-coding" more than a slogan — a hook actually *fires*, so the discipline doesn't depend on you remembering it.
 
-Now the phases.
+### The glue: compound-engineering
 
-- **Plan** — `ce-plan`, `ce-brainstorm`, `ce-doc-review`. The reasoning-heavy step gets the reasoning model; the research gets delegated to subagents instead of typed by hand.
-- **Build** — `ce-work`, `lfg`, the worker model, subagent isolation, `context7`, `codebase-memory-mcp`. The agent walks the code graph instead of dumping files into the window, and looks APIs up in `context7` rather than guessing them.
-- **Test** — Vitest and Cypress in a dual-layer TDD discipline, plus `agent-browser` and `ui-visual-validator` for the things a unit test can't see. Tests come first, and validation runs on every change.
-- **Review** — this is a headline, so read the next section. A *different* model checks the work.
-- **Ship** — `ce-commit-push-pr`, `ce-babysit-pr`, and the small conventions that keep CI cheap.
-- **Learn** — `/ce-compound` writes what you learned into `docs/solutions/`, and the next session reads it.
+Most of what follows — the model gears, the phase commands, `/ce-compound` — comes from **compound-engineering**, the plugin that ties the loose tools into one workflow. On its own you'd have a drawer of sharp tools; compound-engineering is what turns them into a harness. It hands you the model-gear config, the `ce-plan → ce-work → ce-code-review` flow (or `lfg` to run the lot end to end), and the compounding loop. Everything below is a layer it either provides or wires together. (The full inventory — every plugin and MCP server with its exact install line — is in [`docs/harness-inventory.md`](../docs/harness-inventory.md).)
 
-The full inventory — every plugin, marketplace, and MCP server, with the exact install lines — lives in [`docs/harness-inventory.md`](../docs/harness-inventory.md).
+### The gears: which model does what
 
-## Three gears, never one model
-
-Running one model for everything is the single biggest source of wasted budget — and the easiest thing to fix.
-
-The harness runs three gears, set in [`.compound-engineering/config.yaml`](../.compound-engineering/config.yaml):
-
-**Driver — the worker.** Opus or Sonnet, whatever you set per session, does the typing and the building. This is the gear you spend most of your day in. It should be capable, not maximal.
-
-**Overdrive — reasoning.** A reasoning-tuned model (Fable) escalates for the steps where thinking actually pays: authoring a plan, generating approaches. You don't burn your reasoning budget renaming variables; you spend it on the two or three moments per feature where a better plan saves an hour of building.
+Running one model for everything is the single biggest source of wasted budget, and the easiest thing to fix. The harness runs three gears, set in [`.compound-engineering/config.yaml`](../.compound-engineering/config.yaml):
 
 ```yaml
 plan_model: fable
@@ -135,12 +57,27 @@ brainstorm_model: fable
 cross_model_peer: codex
 ```
 
-**Peer — the second opinion.** `cross_model_peer: codex` sends the work to a *different*, differently-trained model to adversarially re-review it. One model grading its own homework misses its own blind spots; a second one, trained by someone else, catches them. This is the quality half of "effective": a second set of eyes on the diff before it ships.
+**Driver — the worker.** Opus or Sonnet, set per session, does the typing and the building. It's the gear you spend most of the day in, so it should be capable, not maximal.
 
-Two notes on the peer, surfaced up front so you don't find out the hard way:
+**Overdrive — reasoning.** A reasoning-tuned model (Fable) escalates for the few steps where thinking actually pays: authoring a plan, generating approaches. You don't burn the reasoning budget renaming variables; you spend it on the two or three moments per feature where a better plan saves an hour of building.
 
-1. It runs on a **separate subscription**. Codex is not free and not covered by your Claude budget. It buys a second opinion, not more tokens.
-2. It **sends your code to a third party**. Enabling `cross_model_peer` means full file contents leave your Claude provider and go to codex/OpenAI. That's a deliberate, reviewed choice — weigh it against how sensitive your repo is. If your code can't leave, leave `cross_model_peer` unset. The repo's [`AGENTS.md`](../AGENTS.md) spells this out at the top, on purpose.
+**Peer — cross-model review.** This is the layer people skip, and it's the one that catches what the others can't. `cross_model_peer: codex` hands the finished work to a *different model, trained by a different company*, to review it adversarially. Not the same model grading its own homework — a genuine second opinion from a system with different blind spots. It has caught production-write bugs the primary model was too close to see. Two honest notes: it runs on a **separate subscription** (codex isn't free and isn't part of your Claude budget — it buys a second opinion, not more tokens), and it **sends your code to a third party** (full file contents leave your Claude provider for OpenAI). Turn it on as a reviewed, opt-in choice weighed against how sensitive your repo is; leave `cross_model_peer` unset if your code can't leave. The repo's [`AGENTS.md`](../AGENTS.md) says so at the top, on purpose.
+
+### The phases: the SDLC as an accelerant
+
+Every tool above lands on a phase of the lifecycle you already run. The harness doesn't let you skip a phase — it makes running one cheaper than skipping it.
+
+**Plan.** `ce-plan` sends the reasoning-heavy planning to Fable; `ce-brainstorm` opens the problem up first; `ce-doc-review` runs a panel of reviewers — and the cross-model peer — over the plan *before* you build. The thinking happens on the right model, and gets reviewed, before a line is written.
+
+**Build.** `ce-work` and `lfg` drive on the worker model. The quiet workhorse here is **subagent and fork isolation**: a wide "where is this used" search runs inside a subagent that reads forty files and hands back three lines — the other thirty-seven never touch your main window. That isolation is the single biggest lever on getting more done per token, because the context you're thinking in stays uncluttered.
+
+**Test.** The harness ships a testing *discipline*, not just a runner: Vitest and Cypress in a dual-layer TDD contract (a behavior change updates both), plus `agent-browser` and `ui-visual-validator` for what a unit test can't see. Tests come first; validation runs on every change.
+
+**Review.** The cross-model peer leads, then `ce-code-review`. Two more lenses are baked into how the agent itself behaves: **ponytail** gives it a lazy-senior-developer instinct — the best code is the code you don't write — so it stops gold-plating and reaches for the smallest thing that works; **caveman** strips its prose down to signal, so its output doesn't clog the context you're paying to keep clear. Quality and terseness as defaults, not reminders.
+
+**Ship.** `ce-commit-push-pr` writes the PR; `ce-babysit-pr` watches CI to green and nudges it along.
+
+**Learn.** `/ce-compound` writes each non-trivial fix — the bug, the fix, what didn't work — into `docs/solutions/`, and the next session reads it. This is the layer that makes the whole thing compound.
 
 ## One real session
 
