@@ -1,0 +1,24 @@
+# Dependency catalog: how bootstrap.sh installs each dependency on each host (KTD2, R5, R19).
+# Tab-separated; '#' lines are comments. '-' marks a not-applicable ref/skills/note cell (keeps read -r from collapsing empty fields).
+# ref: 40-hex commit that skills-method installs pin to (npx skills add <source>#<ref>).
+# skills: '*' (all) or a space-separated list of skill names, each passed as its own -s argument.
+# Host columns: native (host plugin install) | skills (npx skills -a <host> -g) | none (skipped, see note). omp is never skills (KTD5).
+dep	marketplace	source	ref	skills	claude-code	codex	opencode	pi	omp	note
+compound-engineering	compound-engineering-plugin	EveryInc/compound-engineering-plugin	-	-	native	native	native	native	native	ships every host's manifest
+compound-writing	compound-writing	EveryInc/compound-writing	18702f0ece9f2b852e305807e0271b2d550d9b4b	*	native	native	skills	skills	native	18 agents + 2 commands Claude-only
+javascript-typescript	claude-code-workflows	wshobson/agents	70444e5b1fae2237f3cb087c70db043ab633fe11	javascript-testing-patterns modern-javascript-patterns nodejs-backend-patterns typescript-advanced-types	native	skills	skills	skills	native	2 agents + 1 command Claude-only
+python-development	claude-code-workflows	wshobson/agents	70444e5b1fae2237f3cb087c70db043ab633fe11	async-python-patterns python-anti-patterns python-background-jobs python-code-style python-configuration python-design-patterns python-error-handling python-observability python-packaging python-performance-optimization python-project-structure python-resilience python-resource-management python-testing-patterns python-type-safety uv-package-manager	native	skills	skills	skills	native	3 agents Claude-only
+backend-development	claude-code-workflows	wshobson/agents	70444e5b1fae2237f3cb087c70db043ab633fe11	api-design-principles architecture-patterns cqrs-implementation event-store-design microservices-patterns projection-patterns saga-orchestration temporal-python-testing workflow-orchestration-patterns	native	skills	skills	skills	native	8 agents Claude-only
+cloud-infrastructure	claude-code-workflows	wshobson/agents	70444e5b1fae2237f3cb087c70db043ab633fe11	cost-optimization hybrid-cloud-networking istio-traffic-management linkerd-patterns mtls-configuration multi-cloud-architecture service-mesh-observability terraform-module-library	native	skills	skills	skills	native	7 agents Claude-only
+debugging-toolkit	claude-code-workflows	wshobson/agents	-	-	native	none	none	none	none	agents/commands only, no skill form
+developer-essentials	claude-code-workflows	wshobson/agents	70444e5b1fae2237f3cb087c70db043ab633fe11	auth-implementation-patterns bazel-build-optimization code-review-excellence debugging-strategies e2e-testing-patterns error-handling-patterns git-advanced-workflows monorepo-management nx-workspace-patterns sql-optimization-patterns turborepo-caching	native	skills	skills	skills	native	-
+multi-platform-apps	claude-code-workflows	wshobson/agents	-	-	native	none	none	none	none	agents/commands only, no skill form
+typescript-lsp	claude-plugins-official	anthropics/claude-plugins-official	-	-	native	none	none	none	none	LSP manifest; binary is a tool prerequisite
+frontend-design	claude-plugins-official	anthropics/claude-plugins-official	8286e2db0113d3e0a124af3345a8fd15ab93937d	frontend-design	native	skills	skills	skills	native	ref from the marketplace's .gcs-sha (snapshot, not a git clone)
+skill-creator	claude-plugins-official	anthropics/claude-plugins-official	8286e2db0113d3e0a124af3345a8fd15ab93937d	skill-creator	native	skills	skills	skills	native	ref from the marketplace's .gcs-sha (snapshot, not a git clone)
+ralph-loop	claude-plugins-official	anthropics/claude-plugins-official	-	-	native	none	none	none	none	Stop hook + commands only
+agent-browser	agent-browser	vercel-labs/agent-browser	e4e2fe8633be35e2e4567a464604e6a314e74279	agent-browser	native	skills	skills	skills	native	needs the agent-browser binary; other 5 repo skills not pinned
+ralph-wiggum	claude-code-plugins	anthropics/claude-code	-	-	native	none	none	none	none	Stop hook + commands only
+caveman	caveman	JuliusBrussee/caveman	655b7d9c5431f822264b7732e9901c5578ac84cf	cavecrew caveman caveman-commit caveman-compress caveman-help caveman-review caveman-stats	native	skills	skills	skills	native	always-on hook Claude-only (KTD11)
+ponytail	ponytail	DietrichGebert/ponytail	-	-	native	native	native	native	native	hooks on Claude/Codex/Pi/OpenCode natively
+pm-rituals	pm-claude-skills	mohitagw15856/pm-claude-skills	e34fc1db2bdaa9adbcc493fa8b7284ef89616fc7	pm-weekly-review plan-my-day	native	skills	skills	skills	native	-
