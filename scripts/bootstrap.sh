@@ -31,7 +31,7 @@ run() {
   if [ "$DRY_RUN" = 1 ]; then echo "DRY-RUN: $*"; return 0; fi
   echo "+ $*"
   local out code
-  out="$("$@" 2>&1)"; code=$?
+  out="$("$@" </dev/null 2>&1)"; code=$? # </dev/null: installers must not eat the catalog loop's stdin
   [ -n "$out" ] && printf '%s\n' "$out"
   [ "$code" = 0 ] && return 0
   if printf '%s' "$out" | grep -qiE 'already (installed|exists|added|configured|present)|is already'; then

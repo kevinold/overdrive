@@ -177,6 +177,15 @@ test('real run: unrecognized failure continues, lands in summary, exits non-zero
   assert.match(summary, /codex plugin add compound-engineering@compound-engineering-plugin/);
 });
 
+test('real run: an installer that reads stdin cannot swallow the rest of the catalog', () => {
+  // npx and the host CLIs may read stdin; the catalog loop must not hand them deps.tsv.
+  const { r, log } = realRun({ codex: 'cat >/dev/null; exit 0', npx: 'cat >/dev/null; exit 0' }, 'codex');
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(log, /codex plugin add compound-engineering@compound-engineering-plugin/);
+  assert.match(log, /codex plugin add ponytail@ponytail/);
+  assert.match(log, /npx -y skills@1\.7\.0 add mohitagw15856\/pm-claude-skills#/);
+});
+
 test('real run: already-installed exit 1 is benign', () => {
   const { r } = realRun({ codex: 'echo "Plugin already installed"; exit 1' }, 'codex');
   assert.equal(r.status, 0, r.stdout + r.stderr);
