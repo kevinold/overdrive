@@ -1,42 +1,27 @@
 # Harness inventory (canonical)
 
-Verified **2026-09-04**. This is the single source the rest of the build reads —
-`bootstrap.sh`, `README.md`, and `docs/install.md` all reference these exact names.
-Review this list before running `scripts/bootstrap.sh` on a fresh clone.
+Verified **2026-09-04**. Review this before running `scripts/bootstrap.sh` on a fresh clone.
 
-## Plugins — 18 enabled across 11 registered marketplaces
+## Dependencies
 
-Install form: `/plugin marketplace add <owner/repo>` then
-`/plugin install <plugin>@<marketplace>`.
+`harness/deps.tsv` is the single source: 18 dependencies across 9 marketplaces, one row each,
+with a method per host. GitHub renders it as a table. Three methods:
 
-| Plugin | Marketplace |
-|---|---|
-| compound-engineering | compound-engineering-plugin |
-| compound-writing | compound-writing |
-| javascript-typescript | claude-code-workflows (wshobson/agents) |
-| python-development | claude-code-workflows (wshobson/agents) |
-| backend-development | claude-code-workflows (wshobson/agents) |
-| cloud-infrastructure | claude-code-workflows (wshobson/agents) |
-| debugging-toolkit | claude-code-workflows (wshobson/agents) |
-| developer-essentials | claude-code-workflows (wshobson/agents) |
-| multi-platform-apps | claude-code-workflows (wshobson/agents) |
-| typescript-lsp | claude-plugins-official |
-| frontend-design | claude-plugins-official |
-| skill-creator | claude-plugins-official |
-| ralph-loop | claude-plugins-official |
-| agent-browser | agent-browser |
-| ralph-wiggum | claude-code-plugins |
-| caveman | caveman |
-| ponytail | ponytail |
-| pm-rituals | pm-claude-skills |
+- **`native`** — the host's own plugin install (Claude/Codex/omp marketplaces, Pi `pi install`,
+  OpenCode `plugin` array). Unpinned; tracks the marketplace HEAD.
+- **`skills`** — `npx skills add <source>#<ref>` into the host's global skill dir, pinned to the
+  row's `ref` commit and limited to the row's `skills` list.
+- **`none`** — skipped on that host; the `note` column says why (agents/commands/hooks only).
 
 The seven `claude-code-workflows` packs (wshobson/agents) are the "wshobson packs."
 
 ### What bootstrap installs
 
-`bootstrap.sh` installs the whole harness in one pass: every plugin listed above, the 2 MCP
-servers, the model gears, and the validation layer (`.claude/agents/ui-visual-validator.md`).
-There is no lean/extras split. Run `bootstrap.sh --dry-run` to see every action first.
+Per selected host (`--agent`, or every host on `PATH`): each dependency by its method in
+`harness/deps.tsv`, overdrive itself, the 2 MCP servers by that host's config path, Pi's
+`pi-subagents` + `pi-mcp-adapter`, `mise install`, and `.compound-engineering/config.yaml` if
+absent. Hosts differ; `docs/capability-matrix.md` has the per-host view. Run
+`bootstrap.sh --dry-run` to see every action first.
 
 ## MCP servers
 
@@ -67,5 +52,5 @@ Required — `mise exec -- codebase-memory-mcp` fails on a fresh clone without t
 | `brainstorm_model` | `fable` | Reasoning model for ce-brainstorm |
 | `cross_model_peer` | `codex` | Second-opinion peer — **sends full file content to a third-party model** (opt-in; see egress disclosure in AGENTS.md) |
 
-`~/.claude/settings.json` `model` (e.g. `fable[1m]`) is the fallback/subagent default,
-**not** the driver. The driver (worker) model is Opus/Sonnet, set per session.
+These are compound-engineering keys. How each host sets its driver, reasoning, and peer
+models: `docs/capability-matrix.md` (Gears per host).
