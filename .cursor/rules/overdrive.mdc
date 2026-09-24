@@ -7,6 +7,5 @@ Read `AGENTS.md` at the repo root for the full context contract, model gears, an
 `cross_model_peer: codex` egress disclosure.
 
 - MCP servers: `context7` and `codebase-memory-mcp` (see `.mcp.json`).
-- The plugin/skill/hook acceleration in AGENTS.md is Claude-Code-specific. In Cursor you
-  get the AGENTS.md conventions + the two MCP servers, not the full harness.
+- Cursor gets AGENTS.md + the two MCP servers; full matrix in `docs/capability-matrix.md`.
 - Compounding loop: durable learnings live in `docs/solutions/`.

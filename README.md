@@ -8,21 +8,12 @@ and hooks that make an AI coding agent spend more of each session on **outcomes*
 overhead — a worker model drives, context is cached and reused, subagents stay isolated, and
 knowledge compounds across sessions.
 
-## Portability boundary (honest scope)
-
-- **Ports to any coding agent:** the `AGENTS.md` context contract + the two MCP servers
-  (`context7`, `codebase-memory-mcp`).
-- **Claude-Code-specific:** the plugin / skill / hook acceleration — the gears flow, the
-  SDLC commands (`ce-plan`, `ce-work`, `ce-code-review`, `/ce-compound`), the hooks.
-
-Codex / Cursor / Gemini / OpenCode get AGENTS.md + the MCP servers. They do **not** get the
-full harness. This README does not claim parity.
-
 ## Install
 
 ```bash
 git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh                 # installs the whole harness
+bash scripts/bootstrap.sh                 # every agent host found on PATH
+bash scripts/bootstrap.sh --agent codex   # or pick hosts: claude-code,codex,opencode,pi,omp
 bash scripts/bootstrap.sh --dry-run       # print every action, mutate nothing
 ```
 
@@ -37,7 +28,7 @@ clone — it adds third-party marketplaces and MCP servers.
 | Overdrive (reasoning) | Fable | Escalates for plan + brainstorm (`plan_model`, `brainstorm_model`) |
 | Peer (second opinion) | codex | A *different* model adversarially re-reviews (`cross_model_peer`) |
 
-Configure in `.compound-engineering/config.yaml`.
+Claude Code: `.compound-engineering/config.yaml`. Other hosts: `docs/capability-matrix.md`.
 
 ## Egress disclosure
 
@@ -47,15 +38,18 @@ not covered by your Claude budget. Enable it as a **reviewed, opt-in** decision 
 repo's data sensitivity, **not** a default. Unset `cross_model_peer` to keep code on your
 Claude provider. Details in `AGENTS.md` and `.compound-engineering/config.example.yaml`.
 
-## Per-agent setup
+## Per-host support
 
-- **Claude Code** — `bootstrap.sh` + paste the printed `/plugin` lines. Full harness.
-- **Codex** — `bootstrap.sh` runs `codex mcp add` into `~/.codex/config.toml`. MCP + AGENTS.md.
-- **Cursor** — `.cursor/rules/overdrive.mdc` + native root `AGENTS.md`. MCP + AGENTS.md.
-- **Gemini** — `.gemini/settings.json` + `GEMINI.md`. MCP + AGENTS.md.
-- **OpenCode** — `.opencode/opencode.json`. MCP + AGENTS.md.
+| Host | Gets |
+|---|---|
+| Claude Code | Full harness: plugins, skills, subagents, hooks, MCP |
+| Codex | Plugins + pinned skills, hook after one-time `/hooks` trust, MCP |
+| OpenCode | Plugins (pasted snippet) + pinned skills, plugin hook, MCP |
+| Pi | Packages + pinned skills, extension hook, `pi-subagents`, MCP adapter |
+| omp | Marketplace plugins; hook and install unverified (A1, A2) |
+| Cursor, Gemini | `AGENTS.md` + the two MCP servers |
 
-Full walkthrough: `docs/install.md`.
+Full matrix: [`docs/capability-matrix.md`](docs/capability-matrix.md). Walkthrough: `docs/install.md`.
 
 ## SDLC, accelerated
 
