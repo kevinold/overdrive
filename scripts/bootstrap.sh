@@ -6,15 +6,21 @@
 set -uo pipefail # no -e: the tolerant runner decides what a failure means
 
 VALID="claude-code codex opencode pi omp"
-usage() { echo "usage: bootstrap.sh [--dry-run] [--agent <id>[,<id>]]...  ids: $VALID"; }
+# Agents launch the pinned tool explicitly so it resolves from any project, not only this clone.
+CBM_TOOL="github:DeusData/codebase-memory-mcp@0.11.0" # keep in sync with mise.toml (tests/mcp-probe.test.js)
+CONTEXT7_URL="https://mcp.context7.com/mcp"
+usage() { echo "usage: bootstrap.sh [--dry-run] [--agent <id>[,<id>]]... | --check <project-dir>  ids: $VALID"; }
 
 DRY_RUN=0
 REQ=""
+CHECK=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --dry-run) DRY_RUN=1 ;;
     --agent) [ $# -ge 2 ] || { usage >&2; exit 2; }; REQ="$REQ ${2//,/ }"; shift ;;
     --agent=*) v="${1#--agent=}"; REQ="$REQ ${v//,/ }" ;;
+    --check) [ $# -ge 2 ] || { usage >&2; exit 2; }; CHECK="$2"; shift ;;
+    --check=*) CHECK="${1#--check=}" ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown flag: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -41,9 +47,72 @@ run() {
   fi
 }
 
+# MCP wiring, shared by the real run and --check. User scope, so every project gets the servers.
+mcp_claude() {
+  run claude mcp add --scope user --transport http context7 "$CONTEXT7_URL"
+  run claude mcp add --scope user codebase-memory-mcp -- mise exec "$CBM_TOOL" -- codebase-memory-mcp
+}
+mcp_codex_stdio() { run codex mcp add codebase-memory-mcp -- mise exec "$CBM_TOOL" -- codebase-memory-mcp; }
+mcp_copy() { # dest: install .mcp.json there only if absent (Pi and omp read the same mcpServers shape)
+  if [ -f "$1" ]; then echo "$1 exists. Leaving it untouched."; else run mkdir -p "${1%/*}"; run cp "$ROOT/.mcp.json" "$1"; fi
+}
+
 bin_of() { if [ "$1" = claude-code ]; then echo claude; else echo "$1"; fi; }
 has() { command -v "$1" >/dev/null 2>&1; }
 warn() { echo "warning: $*" >&2; }
+
+# --check <project>: install every skills row into a throwaway copy of <project> (project scope,
+# sandboxed HOME) for Claude Code, the shared .agents/skills dir (Codex, OpenCode, omp), and Pi,
+# then verify each pinned skill landed. Touches neither <project> nor your real HOME.
+if [ -n "$CHECK" ]; then
+  [ -d "$CHECK" ] || { echo "--check: not a directory: $CHECK" >&2; exit 2; }
+  WORK="$(mktemp -d "${TMPDIR:-/tmp}/overdrive-check.XXXXXX")"
+  mkdir -p "$WORK/project" "$WORK/home"
+  (cd "$CHECK" && tar -cf - --exclude node_modules --exclude .git .) | (cd "$WORK/project" && tar -xf -)
+  echo "== check: $CHECK -> $WORK/project (HOME=$WORK/home) =="
+  cd "$WORK/project" || exit 1
+  total=0
+  while IFS=$'\t' read -r dep _ src ref skills _; do
+    case "$dep" in '#'*|dep|'') continue ;; esac
+    [ "$ref" = - ] && continue
+    IFS=' ' read -r -a names <<< "$skills"
+    run env HOME="$WORK/home" npm_config_cache="${npm_config_cache:-$HOME/.npm}" npx -y skills@1.7.0 add "$src#$ref" -s "${names[@]}" -a claude-code universal pi -y --copy
+    [ "$DRY_RUN" = 1 ] && continue
+    for n in "${names[@]}"; do
+      [ "$n" = '*' ] && continue
+      total=$((total + 1))
+      for d in .claude/skills .agents/skills .pi/skills; do
+        [ -f "$d/$n/SKILL.md" ] || { FAILS+=("$dep: missing $d/$n/SKILL.md"); RC=1; }
+      done
+    done
+  done < "$ROOT/harness/deps.tsv"
+  [ "$RC" = 0 ] && echo "ok: $total skills present in .claude/skills, .agents/skills, .pi/skills"
+
+  # MCP: register exactly as the real run does, but into a sandboxed HOME, then probe every
+  # agent's resulting config by launching each server from the project copy.
+  echo "== check: MCP wiring (HOME=$WORK/home) =="
+  REAL_HOME="$HOME"; HOME="$WORK/home"
+  probes=()
+  if has claude; then mcp_claude; probes+=("claude-code=mcpServers:$HOME/.claude.json")
+  else echo "claude-code: binary not found, registration not exercised"; fi
+  if has codex; then
+    mcp_codex_stdio
+    # Not `codex mcp add --url` here: it opens an OAuth sign-in in the browser. Same config, written directly.
+    f="$HOME/.codex/config.toml"
+    [ "$DRY_RUN" = 1 ] || grep -qs '^\[mcp_servers\.context7\]' "$f" || { mkdir -p "${f%/*}"; printf '\n[mcp_servers.context7]\nurl = "%s"\n' "$CONTEXT7_URL" >> "$f"; }
+    for srv in codebase-memory-mcp context7; do
+      codex mcp get "$srv" --json </dev/null > "$WORK/codex-$srv.json" 2>/dev/null
+      probes+=("codex=codex-get:$WORK/codex-$srv.json")
+    done
+  else echo "codex: binary not found, registration not exercised"; fi
+  mcp_copy "$HOME/.pi/agent/mcp.json"; probes+=("pi=mcpServers:$HOME/.pi/agent/mcp.json")
+  mcp_copy "$HOME/.omp/agent/mcp.json"; probes+=("omp=mcpServers:$HOME/.omp/agent/mcp.json")
+  probes+=("opencode=opencode:$ROOT/.opencode/opencode.json" "gemini=mcpServers:$ROOT/.gemini/settings.json" "cursor=mcpServers:$ROOT/.mcp.json")
+  HOME="$REAL_HOME" # servers launch with the real HOME, as each agent would run them
+  run node "$ROOT/scripts/mcp-probe.mjs" --cwd "$WORK/project" "${probes[@]}"
+  if [ ${#FAILS[@]} -gt 0 ]; then echo "== Failures =="; for f in "${FAILS[@]}"; do echo "  $f"; done; fi
+  exit "$RC"
+fi
 
 # Host selection.
 HOSTS=""
@@ -123,20 +192,19 @@ for CUR_HOST in $SEL; do
   case "$CUR_HOST" in
     claude-code)
       run claude plugin marketplace add "$ROOT"; run claude plugin install overdrive@overdrive
-      echo "MCP: .mcp.json is project-scoped; nothing to add." ;;
+      mcp_claude ;;
     codex)
       run codex plugin marketplace add "$ROOT"; run codex plugin add overdrive@overdrive
-      run codex mcp add context7 --url https://mcp.context7.com/mcp
-      run codex mcp add codebase-memory-mcp -- mise exec -- codebase-memory-mcp ;;
+      run codex mcp add context7 --url "$CONTEXT7_URL" # Codex opens a browser sign-in for it
+      mcp_codex_stdio ;;
     pi)
       run pi install "$ROOT"
       run pi install npm:pi-subagents
       run pi install npm:pi-mcp-adapter
-      if [ -f "$HOME/.pi/agent/mcp.json" ]; then echo "$HOME/.pi/agent/mcp.json exists. Leaving it untouched."
-      else run mkdir -p "$HOME/.pi/agent"; run cp "$ROOT/.mcp.json" "$HOME/.pi/agent/mcp.json"; fi ;;
+      mcp_copy "$HOME/.pi/agent/mcp.json" ;;
     omp)
       run omp plugin link "$ROOT"
-      echo "MCP: register context7 + codebase-memory-mcp in omp's MCP config (servers listed in $ROOT/.mcp.json)." ;;
+      mcp_copy "$HOME/.omp/agent/mcp.json" ;;
     opencode)
       echo "OpenCode: add to the \"plugin\" array in ~/.config/opencode/opencode.json:"
       echo "  \"plugin\": [${OC_PLUGINS} \"$ROOT/.opencode/plugins/overdrive.mjs\"]"

@@ -16,6 +16,7 @@ git clone git@github.com:kevinold/overdrive.git && cd overdrive
 bash scripts/bootstrap.sh                # every agent host found on PATH
 bash scripts/bootstrap.sh --agent codex  # or pick hosts: claude-code,codex,opencode,pi,omp
 bash scripts/bootstrap.sh --dry-run      # prints every action, changes nothing
+bash scripts/bootstrap.sh --check <project>  # try pinned skill installs in a throwaway copy
 ```
 
 Review `docs/harness-inventory.md` and `docs/install.md` before running bootstrap on a

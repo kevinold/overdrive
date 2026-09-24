@@ -1,7 +1,8 @@
-# mise pins — required so `mise exec -- codebase-memory-mcp` works on a fresh clone.
+# mise pins. Agent configs launch codebase-memory-mcp as `mise exec github:DeusData/codebase-memory-mcp@<pin> -- codebase-memory-mcp`,
+# so it resolves from any project, not only this clone; keep the pin in sync (tests/mcp-probe.test.js).
 # See docs/harness-inventory.md.
 [tools]
-"github:DeusData/codebase-memory-mcp" = "0.10.8"
+"github:DeusData/codebase-memory-mcp" = "0.11.0"
 act = "latest"
 actionlint = "latest"
 gh = "latest"

@@ -13,13 +13,26 @@ const rows = data.map((cells) => Object.fromEntries(HEADER.map((h, i) => [h, cel
 
 test('header matches catalog columns', () => assert.deepEqual(header, HEADER));
 
-test('18 rows, 11 non-empty cells each, unique deps', () => {
-  assert.equal(rows.length, 18);
+// The catalog installs only what the harness's SDLC loop uses; adding a pack is a deliberate edit here.
+const HARNESS_DEPS = ['compound-engineering', 'typescript-lsp', 'ralph-loop', 'agent-browser', 'ralph-wiggum', 'caveman', 'ponytail'];
+const HARNESS_SKILLS = ['agent-browser', 'caveman', 'caveman-commit', 'caveman-review'];
+
+test('catalog is exactly the harness dependency set', () => {
+  assert.deepEqual(rows.map((r) => r.dep), HARNESS_DEPS);
+});
+
+test('skills-method installs pin exactly the harness skill set', () => {
+  const skills = rows.filter((r) => r.skills !== '-').flatMap((r) => r.skills.split(' '));
+  assert.deepEqual(skills.sort(), [...HARNESS_SKILLS].sort());
+  assert.ok(!skills.includes('*'), 'no wildcard installs: name every skill');
+});
+
+test('11 non-empty cells each, unique deps', () => {
   for (const cells of data) {
     assert.equal(cells.length, HEADER.length, cells[0]);
     assert.ok(cells.every((c) => c.trim() !== ''), `${cells[0]} has an empty cell (use -)`);
   }
-  assert.equal(new Set(rows.map((r) => r.dep)).size, 18);
+  assert.equal(new Set(rows.map((r) => r.dep)).size, rows.length);
 });
 
 test('host cells are native|skills|none; omp never skills', () => {

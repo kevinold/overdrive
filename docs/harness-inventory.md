@@ -4,7 +4,7 @@ Verified **2026-09-04**. Review this before running `scripts/bootstrap.sh` on a 
 
 ## Dependencies
 
-`harness/deps.tsv` is the single source: 18 dependencies across 9 marketplaces, one row each,
+`harness/deps.tsv` is the single source: 7 dependencies across 6 marketplaces, one row each,
 with a method per host. GitHub renders it as a table. Three methods:
 
 - **`native`** — the host's own plugin install (Claude/Codex/omp marketplaces, Pi `pi install`,
@@ -13,7 +13,10 @@ with a method per host. GitHub renders it as a table. Three methods:
   row's `ref` commit and limited to the row's `skills` list.
 - **`none`** — skipped on that host; the `note` column says why (agents/commands/hooks only).
 
-The seven `claude-code-workflows` packs (wshobson/agents) are the "wshobson packs."
+It holds only what the harness uses. The skills it installs off-Claude are `agent-browser` and
+the `caveman`, `caveman-commit`, `caveman-review` lens; `tests/deps-catalog.test.js` pins that
+set, so adding a pack is a deliberate edit. Preview the installs with
+`bash scripts/bootstrap.sh --check <project>`.
 
 ### What bootstrap installs
 
@@ -30,18 +33,22 @@ absent. Hosts differ; `docs/capability-matrix.md` has the per-host view. Run
 | Name | Transport | Endpoint |
 |---|---|---|
 | context7 | http | `https://mcp.context7.com/mcp` |
-| codebase-memory-mcp | stdio | `mise exec -- codebase-memory-mcp` |
+| codebase-memory-mcp | stdio | `mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp` |
 
 **Optional global add-ons (documented, not shipped):** aws-mcp, claude-in-chrome.
 See `docs/install.md` for the least-privilege reminder before enabling these.
 
 ## mise pins
 
-Required — `mise exec -- codebase-memory-mcp` fails on a fresh clone without the pin.
+Every agent config launches the server as `mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp`, naming
+the tool explicitly so it resolves from any project. Bare `mise exec -- codebase-memory-mcp` only
+works inside this clone, where `mise.toml` pins it. `tests/mcp-probe.test.js` keeps the configs and
+the pin in sync. 0.11.0 is required: 0.10.8's daemon could fail to start ("CBM daemon could not
+start within 30000 ms").
 
 | Tool | Version |
 |---|---|
-| `github:DeusData/codebase-memory-mcp` | `0.10.8` |
+| `github:DeusData/codebase-memory-mcp` | `0.11.0` |
 | act, actionlint, gh, jq, aws | latest (dev convenience) |
 
 ## Config gears (`.compound-engineering/config.yaml`)

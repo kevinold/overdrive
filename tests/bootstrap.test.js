@@ -7,7 +7,7 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
-const WSHOBSON = 'wshobson/agents#70444e5b1fae2237f3cb087c70db043ab633fe11';
+const CAVEMAN = 'JuliusBrussee/caveman#655b7d9c5431f822264b7732e9901c5578ac84cf';
 // ponytail: /usr/bin:/bin hold no host binaries, so tests control exactly which hosts exist.
 const SYS_PATH = '/usr/bin:/bin';
 
@@ -48,6 +48,17 @@ function repoCopy() {
 
 const lines = (out) => out.split('\n');
 
+test('claude-code, pi, and omp register both MCP servers at user scope with the pinned tool', () => {
+  const home = tmp('od-home-');
+  const r = boot(['--dry-run', '--agent', 'claude-code,pi,omp'], { home });
+  assert.equal(r.status, 0, r.stderr);
+  const L = lines(r.stdout);
+  assert.ok(L.includes('DRY-RUN: claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp'));
+  assert.ok(L.includes('DRY-RUN: claude mcp add --scope user codebase-memory-mcp -- mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp'));
+  assert.ok(L.includes(`DRY-RUN: cp ${ROOT}/.mcp.json ${home}/.pi/agent/mcp.json`));
+  assert.ok(L.includes(`DRY-RUN: cp ${ROOT}/.mcp.json ${home}/.omp/agent/mcp.json`));
+});
+
 test('codex dry-run: native, skills, none rows + MCP + trust checklist', () => {
   const r = boot(['--dry-run', '--agent', 'codex']);
   assert.equal(r.status, 0, r.stderr);
@@ -55,16 +66,14 @@ test('codex dry-run: native, skills, none rows + MCP + trust checklist', () => {
   const add = lines(out).filter((l) => l === 'DRY-RUN: codex plugin marketplace add EveryInc/compound-engineering-plugin');
   assert.equal(add.length, 1);
   assert.match(out, /DRY-RUN: codex plugin add compound-engineering@compound-engineering-plugin/);
-  for (const pack of ['javascript-testing-patterns', 'async-python-patterns', 'api-design-principles', 'cost-optimization', 'auth-implementation-patterns']) {
-    assert.match(out, new RegExp(`DRY-RUN: npx -y skills@1\\.7\\.0 add ${WSHOBSON} -s ${pack} .* -a codex -g -y`));
-  }
+  assert.ok(lines(out).includes(`DRY-RUN: npx -y skills@1.7.0 add ${CAVEMAN} -s caveman caveman-commit caveman-review -a codex -g -y`));
   assert.match(out, /DRY-RUN: codex mcp add context7 --url https:\/\/mcp\.context7\.com\/mcp/);
-  assert.match(out, /DRY-RUN: codex mcp add codebase-memory-mcp -- mise exec -- codebase-memory-mcp/);
+  assert.match(out, /DRY-RUN: codex mcp add codebase-memory-mcp -- mise exec github:DeusData\/codebase-memory-mcp@0\.11\.0 -- codebase-memory-mcp/);
   assert.match(out, /\[features\] hooks = true/);
   assert.match(out, /\/hooks/);
-  assert.equal(lines(out).filter((l) => l.startsWith('skip debugging-toolkit on codex:')).length, 1);
-  assert.ok(lines(out).includes('skip debugging-toolkit on codex: agents/commands only, no skill form'));
-  assert.doesNotMatch(out, /debugging-toolkit@/);
+  assert.equal(lines(out).filter((l) => l.startsWith('skip typescript-lsp on codex:')).length, 1);
+  assert.ok(lines(out).includes('skip typescript-lsp on codex: LSP manifest; binary is a tool prerequisite'));
+  assert.doesNotMatch(out, /typescript-lsp@/);
 });
 
 test('detection without --agent picks only hosts on PATH', () => {
@@ -94,11 +103,13 @@ test('omp dry-run with omp absent: all actions DRY-RUN, marketplace pairs, link,
   const ompCmds = lines(r.stdout).filter((l) => /(^|: )omp plugin /.test(l));
   assert.ok(ompCmds.length > 0);
   for (const l of ompCmds) assert.ok(l.startsWith('DRY-RUN: '), l);
-  assert.match(r.stdout, /DRY-RUN: omp plugin marketplace add wshobson\/agents/);
-  assert.match(r.stdout, /DRY-RUN: omp plugin install pm-rituals@pm-claude-skills/);
+  assert.match(r.stdout, /DRY-RUN: omp plugin marketplace add JuliusBrussee\/caveman/);
+  assert.match(r.stdout, /DRY-RUN: omp plugin install caveman@caveman/);
   assert.ok(lines(r.stdout).includes(`DRY-RUN: omp plugin link ${ROOT}`));
   assert.doesNotMatch(r.stdout, /npx -y skills/);
-  assert.equal(lines(r.stdout).filter((l) => l === 'DRY-RUN: omp plugin marketplace add wshobson/agents').length, 1);
+  // marketplace adds dedupe per (host, marketplace): claude-plugins-official carries two claude-native rows
+  const c = boot(['--dry-run', '--agent', 'claude-code']);
+  assert.equal(lines(c.stdout).filter((l) => l === 'DRY-RUN: claude plugin marketplace add anthropics/claude-plugins-official').length, 1);
 });
 
 test('opencode dry-run: plugin snippet + npx skills', () => {
@@ -113,7 +124,7 @@ test('opencode dry-run: plugin snippet + npx skills', () => {
 test('one npx line per row with space-separated -a hosts', () => {
   const r = boot(['--dry-run', '--agent', 'codex,pi']);
   assert.equal(r.status, 0, r.stderr);
-  const fd = lines(r.stdout).filter((l) => l.includes('-s frontend-design'));
+  const fd = lines(r.stdout).filter((l) => l.includes('-s agent-browser'));
   assert.equal(fd.length, 1);
   assert.match(fd[0], / -a codex pi -g -y$/);
   // repeatable --agent is equivalent
@@ -121,10 +132,9 @@ test('one npx line per row with space-separated -a hosts', () => {
   assert.equal(r2.stdout, r.stdout);
 });
 
-test('skills names split into separate args; * passes unexpanded', () => {
+test('skills names split into separate args', () => {
   const r = boot(['--dry-run', '--agent', 'pi']);
-  assert.match(r.stdout, / -s pm-weekly-review plan-my-day -a pi /);
-  assert.match(r.stdout, /add EveryInc\/compound-writing#18702f0ece9f2b852e305807e0271b2d550d9b4b -s \* -a pi -g -y/);
+  assert.match(r.stdout, / -s caveman caveman-commit caveman-review -a pi /);
 });
 
 test('bogus --agent exits 2 naming valid ids', () => {
@@ -177,13 +187,68 @@ test('real run: unrecognized failure continues, lands in summary, exits non-zero
   assert.match(summary, /codex plugin add compound-engineering@compound-engineering-plugin/);
 });
 
+// Fake npx for --check: creates <dir>/<skill>/SKILL.md for every -s name under every -a host's project dir.
+const FAKE_NPX = `echo "HOME=$HOME PWD=$PWD" >> "$STUB_LOG"
+mode=""; names=""; hosts=""
+for a in "$@"; do
+  case "$a" in -s) mode=s ;; -a) mode=a ;; -*) mode="" ;;
+    *) [ "$mode" = s ] && names="$names $a"; [ "$mode" = a ] && hosts="$hosts $a" ;; esac
+done
+for h in $hosts; do
+  case "$h" in claude-code) d=.claude/skills ;; universal) d=.agents/skills ;; pi) d=.pi/skills ;; *) continue ;; esac
+  for n in $names; do mkdir -p "$d/$n" && echo x > "$d/$n/SKILL.md"; done
+done`;
+
+function sampleProject() {
+  const dir = tmp('od-sample-');
+  writeFileSync(join(dir, 'package.json'), '{}');
+  return dir;
+}
+
+// Fake `mise` for --check: behaves as the codebase-memory-mcp stdio server the configs launch.
+const FAKE_MISE = `read l; echo '{"jsonrpc":"2.0","id":1,"result":{"serverInfo":{"name":"stub-cbm","version":"0"}}}'; sleep 1`;
+
+test('--check installs every skills row into a throwaway copy and verifies SKILL.md per host dir', () => {
+  process.env.OVERDRIVE_MCP_OFFLINE = '1';
+  const sample = sampleProject();
+  const home = tmp('od-home-');
+  const log = join(home, 'stub.log');
+  writeFileSync(log, '');
+  process.env.STUB_LOG = log;
+  const r = boot(['--check', sample], { path: `${stubDir({ npx: FAKE_NPX, mise: FAKE_MISE })}:${SYS_PATH}`, home });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  for (const agent of ['pi', 'omp', 'opencode', 'gemini', 'cursor']) {
+    assert.match(r.stdout, new RegExp(`^ok\\s+${agent} codebase-memory-mcp: stub-cbm`, 'm'), agent);
+  }
+  assert.ok(!existsSync(join(home, '.omp')) && !existsSync(join(home, '.pi')), 'real HOME untouched');
+  assert.match(r.stdout, /skills present in \.claude\/skills, \.agents\/skills, \.pi\/skills/);
+  assert.match(r.stdout, /-a claude-code universal pi -y --copy/);
+  const l = readFileSync(log, 'utf8');
+  assert.doesNotMatch(l, new RegExp(`HOME=${home}\\b`), 'HOME must be sandboxed, not the caller HOME');
+  assert.doesNotMatch(l, new RegExp(`PWD=${sample}`), 'installs run in the copy, never the sample');
+  assert.ok(!existsSync(join(sample, '.claude')), 'sample project untouched');
+});
+
+test('--check reports a skill that did not land and exits non-zero', () => {
+  const home = tmp('od-home-');
+  process.env.STUB_LOG = join(home, 'stub.log');
+  const r = boot(['--check', sampleProject()], { path: `${stubDir({ npx: 'exit 0' })}:${SYS_PATH}`, home });
+  assert.notEqual(r.status, 0);
+  assert.match(r.stdout, /== Failures ==[\s\S]*missing \.claude\/skills\/caveman\/SKILL\.md/);
+});
+
+test('--check without an existing project dir exits 2', () => {
+  assert.equal(boot(['--check', '/nonexistent/od-project']).status, 2);
+  assert.equal(boot(['--check']).status, 2);
+});
+
 test('real run: an installer that reads stdin cannot swallow the rest of the catalog', () => {
   // npx and the host CLIs may read stdin; the catalog loop must not hand them deps.tsv.
   const { r, log } = realRun({ codex: 'cat >/dev/null; exit 0', npx: 'cat >/dev/null; exit 0' }, 'codex');
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(log, /codex plugin add compound-engineering@compound-engineering-plugin/);
   assert.match(log, /codex plugin add ponytail@ponytail/);
-  assert.match(log, /npx -y skills@1\.7\.0 add mohitagw15856\/pm-claude-skills#/);
+  assert.match(log, /npx -y skills@1\.7\.0 add JuliusBrussee\/caveman#/);
 });
 
 test('real run: already-installed exit 1 is benign', () => {

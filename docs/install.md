@@ -10,9 +10,11 @@ What gets installed, per dependency and host: `harness/deps.tsv`.
 
 Vetted marketplaces (verified **2026-09-04**):
 
-- `compound-engineering-plugin`, `compound-writing`
-- `claude-code-workflows` (wshobson/agents), `claude-plugins-official`, `claude-code-plugins`
-- `agent-browser`, `caveman`, `ponytail`, `pm-claude-skills`
+- `compound-engineering-plugin`, `claude-plugins-official`, `claude-code-plugins`
+- `agent-browser`, `caveman`, `ponytail`
+
+The catalog holds only what the harness uses (plan/build/review/ship/learn, the two house-style
+lenses, browser testing). Add a row to `harness/deps.tsv` to bring another pack in.
 
 Off-Claude hosts also pull from the same GitHub sources through `npx -y skills@1.7.0` (pinned
 to the `ref` column of `harness/deps.tsv`), and Pi pulls `npm:pi-subagents` and
@@ -22,6 +24,22 @@ Two freshness models: native plugin installs are unpinned and track the marketpl
 `skills` installs are commit-pinned. Verification is a point-in-time snapshot — re-check the
 owners before trusting them on a new machine. There is no lockfile; this is a personal MIT
 starter, not a fail-closed supply chain.
+
+### Check the skill installs first
+
+```bash
+bash scripts/bootstrap.sh --check ~/code/some-project
+```
+
+Copies the project to a temp dir (without `node_modules` / `.git`), points `HOME` at an empty temp
+dir, and runs every pinned `npx skills` row at project scope for Claude Code (`.claude/skills`),
+the shared `.agents/skills` dir (Codex, OpenCode, omp), and Pi (`.pi/skills`). It then checks
+every pinned skill landed with a `SKILL.md`. Then it registers the MCP servers exactly as a real
+run would, into the sandboxed `HOME` (Claude Code and Codex when installed, plus Pi's and omp's
+`mcp.json`), and launches every server each agent's config names from the project copy, OpenCode's,
+Gemini's, and Cursor's shipped configs included, to finish an MCP `initialize`. It exits non-zero
+on any miss. Your project and your real `HOME` are not touched; the temp copy's path is printed so
+you can inspect it.
 
 ### Least-privilege reminder (optional global add-ons)
 
@@ -64,8 +82,9 @@ bash scripts/bootstrap.sh --agent claude-code
 ```
 
 Runs `claude plugin marketplace add <owner/repo>` + `claude plugin install <dep>@<marketplace>`
-for all 18 dependencies, then `claude plugin marketplace add <clone>` +
-`claude plugin install overdrive@overdrive`. `.mcp.json` is project-scoped; nothing to add.
+for every dependency in the catalog, then `claude plugin marketplace add <clone>` +
+`claude plugin install overdrive@overdrive`, and registers both MCP servers at user scope
+(`claude mcp add --scope user …`) so every project gets them.
 
 Manual: restart Claude Code.
 
@@ -78,11 +97,12 @@ Uninstall: `claude plugin uninstall overdrive@overdrive`, then
 bash scripts/bootstrap.sh --agent codex
 ```
 
-Native plugins for compound-engineering, compound-writing, ponytail, and overdrive
+Native plugins for compound-engineering, ponytail, and overdrive
 (`codex plugin marketplace add <clone>` + `codex plugin add overdrive@overdrive`); pinned
-`npx skills … -a codex -g -y` for the skill-only packs; MCP via
+`npx skills … -a codex -g -y` for the agent-browser and caveman skills; MCP via
 `codex mcp add context7 --url https://mcp.context7.com/mcp` and
-`codex mcp add codebase-memory-mcp -- mise exec -- codebase-memory-mcp`. The repo
+`codex mcp add codebase-memory-mcp -- mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp`. Adding
+context7 opens a browser sign-in; finish it and the server is live. The repo
 `.codex/config.toml` is reference only.
 
 Manual: set `[features] hooks = true` in `~/.codex/config.toml`, run `/hooks` and trust
@@ -140,18 +160,22 @@ Runs `omp plugin marketplace add <owner/repo>` + `omp plugin install <dep>@<mark
 every dependency with skills, then `omp plugin link <clone>` for overdrive. Not verified on a
 real run (Assumptions A1, A2 in `docs/capability-matrix.md`).
 
-Manual: `omp config set marketplace.autoUpdate auto`, register `context7` and
-`codebase-memory-mcp` in omp's MCP config (servers listed in `.mcp.json`), then restart omp.
+Copies `.mcp.json` to `~/.omp/agent/mcp.json` (omp's user MCP config, same `mcpServers` shape)
+only if that file is absent. omp also imports servers from `~/.claude.json` and
+`~/.codex/config.toml`.
+
+Manual: `omp config set marketplace.autoUpdate auto`, then restart omp.
 
 Uninstall: reverse `omp plugin link` per `omp plugin --help` (unverified).
 
 ## Cursor
 
 `.cursor/rules/overdrive.mdc` (frontmatter `alwaysApply`) points Cursor at `AGENTS.md`, which
-Cursor also reads natively. Wire the MCP servers in Cursor's MCP settings using `.mcp.json` as
-the reference. Bootstrap does nothing for Cursor.
+Cursor also reads natively. For the MCP servers in every project, copy the `mcpServers` block
+of `.mcp.json` into `~/.cursor/mcp.json`. Bootstrap does nothing else for Cursor.
 
 ## Gemini
 
 `.gemini/settings.json` sets `GEMINI.md` as the context file and declares the two MCP
-servers. `GEMINI.md` points back at `AGENTS.md`. Bootstrap does nothing for Gemini.
+servers for this clone; copy its `mcpServers` block into `~/.gemini/settings.json` for every
+project. `GEMINI.md` points back at `AGENTS.md`. Bootstrap does nothing for Gemini.

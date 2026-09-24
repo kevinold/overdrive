@@ -6,29 +6,30 @@ install methods live in `harness/deps.tsv`; install steps in `docs/install.md`.
 
 | Capability | Claude Code | Codex | OpenCode | Pi | omp | Cursor | Gemini |
 |---|---|---|---|---|---|---|---|
-| Skills | native plugins (all 18 deps + overdrive) | native plugins (compound-engineering, compound-writing, ponytail, overdrive) + pinned `npx skills` | `plugin` array (compound-engineering, ponytail, overdrive) + pinned `npx skills` | `pi install` (compound-engineering, ponytail, overdrive) + pinned `npx skills` | marketplace plugins (A1 pending) | none; `AGENTS.md` only | none; `AGENTS.md` only |
+| Skills | native plugins (every catalog dep + overdrive) | native plugins (compound-engineering, ponytail, overdrive) + pinned `npx skills` | `plugin` array (compound-engineering, ponytail, overdrive) + pinned `npx skills` | `pi install` (compound-engineering, ponytail, overdrive) + pinned `npx skills` | marketplace plugins (A1 pending) | none; `AGENTS.md` only | none; `AGENTS.md` only |
 | Subagents | plugin `agents/`; `ui-visual-validator` wrapper defers to the skill | none; `ui-visual-validator` as a skill | none; `ui-visual-validator` as a skill | `pi-subagents` companion; `ui-visual-validator` as a skill | none; `ui-visual-validator` as a skill | none | none |
 | Hook context (overdrive) | `hooks/hooks.json` SessionStart | same `hooks/hooks.json`, after one-time `/hooks` trust (not live-verified) | `.opencode/plugins/overdrive.mjs` system-prompt transform (unit-tested only) | `.pi/extensions/overdrive.js` `before_agent_start` (verified) | Pi extension if A2 holds; else `AGENTS.md` | `AGENTS.md` via `.cursor/rules/overdrive.mdc` | `AGENTS.md` via `GEMINI.md` |
 | House style: ponytail | native hook | native hook | native plugin hook | native hook | skills; hook pending A2 | `AGENTS.md` text | `AGENTS.md` text |
 | House style: caveman | native always-on hook | `/caveman` skills only, no always-on hook | `/caveman` skills only | `/caveman` skills only | `/caveman` skills only | `AGENTS.md` text | `AGENTS.md` text |
-| MCP | `.mcp.json` (project-scoped) | `codex mcp add` → `~/.codex/config.toml` | `.opencode/opencode.json` (project); global snippet printed | `pi-mcp-adapter` + `~/.pi/agent/mcp.json` (A3 pending) | native MCP; register by hand | MCP settings, `.mcp.json` as reference | `.gemini/settings.json` |
+| MCP | `claude mcp add --scope user` (verified: Claude reports both Connected) | `codex mcp add` → `~/.codex/config.toml` (verified) | `.opencode/opencode.json` (project); global snippet printed (config verified) | `pi-mcp-adapter` + `~/.pi/agent/mcp.json` (config verified) | `~/.omp/agent/mcp.json` (config verified) | `~/.cursor/mcp.json` from `.mcp.json` (config verified) | `.gemini/settings.json` (config verified) |
 | Gears | CE config + `/model` | `model`, profiles | per-agent `model` | `/model`, `--models` | `modelRoles` | host model picker | host model picker |
 
 Notes:
 
 - **Two freshness models.** Native plugin installs are unpinned and track the marketplace
   HEAD. `skills`-method installs are commit-pinned to the `ref` column of `harness/deps.tsv`.
-- **Agents and commands stay Claude-only.** Dependencies that ship only agents, commands, or
-  Stop hooks (`debugging-toolkit`, `multi-platform-apps`, `ralph-loop`, `ralph-wiggum`) and the
-  LSP pack (`typescript-lsp`) are skipped off-Claude; the `note` column says why.
-- **Caveman** off-Claude is its seven Claude-shipped skills, pinned. Its always-on hook exists
-  only on Claude Code.
+- **Commands and hooks stay Claude-only.** Dependencies that ship only commands and Stop hooks
+  (`ralph-loop`, `ralph-wiggum`) and the LSP pack (`typescript-lsp`) are skipped off-Claude; the
+  `note` column says why.
+- **Caveman** off-Claude is three pinned skills (`caveman`, `caveman-commit`,
+  `caveman-review`). Its always-on hook exists only on Claude Code.
 - **agent-browser** off-Claude pins only the `agent-browser` skill and needs the
   `agent-browser` binary on `PATH`.
 - **OpenCode may list a skill twice.** `npx skills` keeps a canonical copy in
   `~/.agents/skills/` and links it into each host dir; OpenCode reads both. Harmless.
 - **omp fallback** if a marketplace pack is rejected: `npx skills add … -a universal`
-  project-scope (`.agents/skills/`). Not built.
+  project-scope (`.agents/skills/`). `bootstrap.sh --check <project>` exercises exactly that
+  install path (verified against a sample project); omp loading it is still unverified.
 
 ## Assumptions
 
@@ -36,8 +37,11 @@ Notes:
   `.claude-plugin/marketplace.json` and loads its `skills/`. omp not installed locally.
 - **A2 — pending.** omp fires Pi's `before_agent_start` and honors the returned system prompt.
   Until verified, omp hook context degrades to `AGENTS.md`.
-- **A3 — pending.** `pi-mcp-adapter` reads the `.mcp.json` `mcpServers` shape. Bootstrap copies
-  `.mcp.json` to `~/.pi/agent/mcp.json` only if that file is absent.
+- **A3 — verified.** `pi-mcp-adapter` reads `~/.pi/agent/mcp.json` in the `.mcp.json`
+  `mcpServers` shape (its README), and `bootstrap.sh --check` launches both servers from that file.
+  "config verified" in the MCP row means `--check` launched every server that agent's config names
+  and completed an MCP `initialize` from inside a sample project; the agent itself loading the file
+  is verified only for Claude Code.
 - **A4 — verified.** Codex accepts the local marketplace: `codex plugin marketplace add <clone>`
   + `codex plugin add overdrive@overdrive` succeed.
 
