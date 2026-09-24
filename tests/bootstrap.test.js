@@ -1,4 +1,4 @@
-import { test } from 'node:test';
+import { after, test } from 'node:test';
 import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import { chmodSync, cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, writeFileSync } from 'node:fs';
@@ -11,6 +11,14 @@ const WSHOBSON = 'wshobson/agents#70444e5b1fae2237f3cb087c70db043ab633fe11';
 // ponytail: /usr/bin:/bin hold no host binaries, so tests control exactly which hosts exist.
 const SYS_PATH = '/usr/bin:/bin';
 
+const TMP = [];
+function tmp(prefix) {
+  const dir = mkdtempSync(join(tmpdir(), prefix));
+  TMP.push(dir);
+  return dir;
+}
+after(() => TMP.forEach((d) => rmSync(d, { recursive: true, force: true })));
+
 function boot(args, { path, home, root = ROOT } = {}) {
   const env = { ...process.env };
   if (path) env.PATH = path;
@@ -20,7 +28,7 @@ function boot(args, { path, home, root = ROOT } = {}) {
 
 // Temp bin dir: node symlink plus one shell stub per name (body = shell snippet, default exit 0).
 function stubDir(stubs = {}) {
-  const dir = mkdtempSync(join(tmpdir(), 'od-bin-'));
+  const dir = tmp('od-bin-');
   symlinkSync(process.execPath, join(dir, 'node'));
   for (const [name, body] of Object.entries(stubs)) {
     writeFileSync(join(dir, name), `#!/bin/sh\necho "${name} $*" >> "$STUB_LOG"\n${body || 'exit 0'}\n`);
@@ -31,7 +39,7 @@ function stubDir(stubs = {}) {
 
 // Temp repo copy so real runs and config tests never touch this checkout.
 function repoCopy() {
-  const dir = mkdtempSync(join(tmpdir(), 'od-repo-'));
+  const dir = tmp('od-repo-');
   for (const p of ['scripts', 'harness', '.mcp.json']) cpSync(join(ROOT, p), join(dir, p), { recursive: true });
   mkdirSync(join(dir, '.compound-engineering'));
   cpSync(join(ROOT, '.compound-engineering/config.example.yaml'), join(dir, '.compound-engineering/config.example.yaml'));
@@ -40,7 +48,7 @@ function repoCopy() {
 
 const lines = (out) => out.split('\n');
 
-test('codex dry-run: native, skills, none rows + MCP + trust checklist (AE2 shape, AE4)', () => {
+test('codex dry-run: native, skills, none rows + MCP + trust checklist', () => {
   const r = boot(['--dry-run', '--agent', 'codex']);
   assert.equal(r.status, 0, r.stderr);
   const out = r.stdout;
@@ -54,13 +62,12 @@ test('codex dry-run: native, skills, none rows + MCP + trust checklist (AE2 shap
   assert.match(out, /DRY-RUN: codex mcp add codebase-memory-mcp -- mise exec -- codebase-memory-mcp/);
   assert.match(out, /\[features\] hooks = true/);
   assert.match(out, /\/hooks/);
-  // AE4
   assert.equal(lines(out).filter((l) => l.startsWith('skip debugging-toolkit on codex:')).length, 1);
   assert.ok(lines(out).includes('skip debugging-toolkit on codex: agents/commands only, no skill form'));
   assert.doesNotMatch(out, /debugging-toolkit@/);
 });
 
-test('AE1: detection without --agent picks only hosts on PATH', () => {
+test('detection without --agent picks only hosts on PATH', () => {
   const bin = stubDir({ claude: '', pi: '' });
   const r = boot(['--dry-run'], { path: `${bin}:${SYS_PATH}` });
   assert.equal(r.status, 0, r.stderr);
@@ -80,7 +87,7 @@ test('pi dry-run: companions, self-install from the clone, skills', () => {
   assert.match(r.stdout, /-a pi -g -y/);
 });
 
-test('AE2: omp dry-run with omp absent: all actions DRY-RUN, marketplace pairs, link, no npx skills', () => {
+test('omp dry-run with omp absent: all actions DRY-RUN, marketplace pairs, link, no npx skills', () => {
   const bin = stubDir();
   const r = boot(['--dry-run', '--agent', 'omp'], { path: `${bin}:${SYS_PATH}` });
   assert.equal(r.status, 0, r.stderr);
@@ -133,7 +140,7 @@ test('no agent flag and no host on PATH exits 1', () => {
   assert.match(r.stderr, /no agent found/);
 });
 
-test('AE6: config.yaml untouched when present; dry-run seeds nothing when absent', () => {
+test('config.yaml untouched when present; dry-run seeds nothing when absent', () => {
   const repo = repoCopy();
   const cfg = join(repo, '.compound-engineering/config.yaml');
   writeFileSync(cfg, 'driver: my-edit\n');
@@ -150,7 +157,7 @@ test('AE6: config.yaml untouched when present; dry-run seeds nothing when absent
 
 function realRun(stubs, agents) {
   const repo = repoCopy();
-  const home = mkdtempSync(join(tmpdir(), 'od-home-'));
+  const home = tmp('od-home-');
   const log = join(home, 'stub.log');
   writeFileSync(log, '');
   const bin = stubDir({ npx: '', mise: '', ...stubs });
@@ -176,7 +183,7 @@ test('real run: already-installed exit 1 is benign', () => {
   assert.doesNotMatch(r.stdout, /== Failures ==/);
 });
 
-test('AE3: real run skips an absent host, runs the rest, exits non-zero', () => {
+test('real run skips an absent host, runs the rest, exits non-zero', () => {
   const { r, log, home, repo } = realRun({ pi: '' }, 'codex,pi');
   assert.notEqual(r.status, 0);
   assert.match(r.stdout + r.stderr, /codex: binary not found, skipped/);

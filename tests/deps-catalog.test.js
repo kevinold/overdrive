@@ -11,7 +11,7 @@ const lines = readFileSync(new URL('../harness/deps.tsv', import.meta.url), 'utf
 const [header, ...data] = lines.map((l) => l.split('\t'));
 const rows = data.map((cells) => Object.fromEntries(HEADER.map((h, i) => [h, cells[i]])));
 
-test('header matches KTD2 columns', () => assert.deepEqual(header, HEADER));
+test('header matches catalog columns', () => assert.deepEqual(header, HEADER));
 
 test('18 rows, 11 non-empty cells each, unique deps', () => {
   assert.equal(rows.length, 18);

@@ -3,7 +3,7 @@
 # from harness/deps.tsv. --dry-run prints every action without mutating anything.
 # Bash 3.2 compatible (macOS /bin/bash): no associative arrays.
 # shellcheck disable=SC2329 # catalog callbacks are invoked indirectly via each_row
-set -uo pipefail # no -e: the tolerant runner decides what a failure means (R12)
+set -uo pipefail # no -e: the tolerant runner decides what a failure means
 
 VALID="claude-code codex opencode pi omp"
 usage() { echo "usage: bootstrap.sh [--dry-run] [--agent <id>[,<id>]]...  ids: $VALID"; }
@@ -45,7 +45,7 @@ bin_of() { if [ "$1" = claude-code ]; then echo claude; else echo "$1"; fi; }
 has() { command -v "$1" >/dev/null 2>&1; }
 warn() { echo "warning: $*" >&2; }
 
-# Host selection (R4).
+# Host selection.
 HOSTS=""
 if [ -n "${REQ// /}" ]; then
   for h in $REQ; do
@@ -57,14 +57,14 @@ else
   [ -n "$HOSTS" ] || { echo "no agent found on PATH (looked for: claude codex opencode pi omp). Pass --agent <id>." >&2; exit 1; }
 fi
 
-# node >= 18 (KTD7, R11): npx skills and the hooks need it.
+# node >= 18: npx skills and the hooks need it.
 NODE_MAJOR="$(node -p 'process.versions.node.split(".")[0]' 2>/dev/null || echo 0)"
 if [ "${NODE_MAJOR:-0}" -lt 18 ]; then
   if [ "$DRY_RUN" = 1 ]; then warn "node >= 18 not found (a real run will stop here)"
   else echo "node >= 18 is required. Install it (https://nodejs.org, fnm, or nvm) then rerun." >&2; exit 1; fi
 fi
 
-# Missing host binary: dry-run warns, real run skips the host (AE3).
+# Missing host binary: dry-run warns, real run skips the host.
 SEL=""
 for h in $HOSTS; do
   if has "$(bin_of "$h")"; then SEL="$SEL $h"
@@ -81,6 +81,7 @@ each_row() {
   done < harness/deps.tsv
 }
 
+# Catalog columns: 1 dep 2 marketplace 3 source 4 ref 5 skills 6 claude-code 7 codex 8 opencode 9 pi 10 omp 11 note
 method_for() { # host dep-row-columns... → the host's method cell
   case "$1" in claude-code) echo "$7" ;; codex) echo "$8" ;; opencode) echo "$9" ;; pi) echo "${10}" ;; omp) echo "${11}" ;; esac
 }
