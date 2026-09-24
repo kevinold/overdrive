@@ -201,6 +201,7 @@ for CUR_HOST in $SEL; do
       run pi install "$ROOT"
       run pi install npm:pi-subagents
       run pi install npm:pi-mcp-adapter
+      run pi install npm:pi-ask-user # compound-engineering's recommended Pi companion for its blocking questions
       mcp_copy "$HOME/.pi/agent/mcp.json" ;;
     omp)
       run omp plugin link "$ROOT"
@@ -214,6 +215,17 @@ done
 
 echo "== skills (npx skills, commit-pinned) =="
 each_row skills_row
+
+# Cursor and Gemini: global MCP so every project gets both servers. Written only when the agent is
+# present and the file is absent; an existing file is left for you to merge.
+echo "== MCP for Cursor / Gemini =="
+global_mcp() { # agent binary config-dir dest source
+  if ! has "$2" && [ ! -d "$3" ]; then echo "$1: not found, skipped"
+  elif [ -f "$4" ]; then echo "$4 exists. Leaving it untouched; merge the mcpServers block from $5 by hand."
+  else run mkdir -p "$3"; run cp "$5" "$4"; fi
+}
+global_mcp Cursor cursor "$HOME/.cursor" "$HOME/.cursor/mcp.json" "$ROOT/.mcp.json"
+global_mcp Gemini gemini "$HOME/.gemini" "$HOME/.gemini/settings.json" "$ROOT/.gemini/settings.json"
 
 # mise: install pinned tools (codebase-memory-mcp etc.).
 if has mise; then

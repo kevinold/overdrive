@@ -18,7 +18,7 @@ lenses, browser testing). Add a row to `harness/deps.tsv` to bring another pack 
 
 Off-Claude hosts also pull from the same GitHub sources through `npx -y skills@1.7.0` (pinned
 to the `ref` column of `harness/deps.tsv`), and Pi pulls `npm:pi-subagents` and
-`npm:pi-mcp-adapter`.
+`npm:pi-mcp-adapter`, and `npm:pi-ask-user`.
 
 Two freshness models: native plugin installs are unpinned and track the marketplace HEAD;
 `skills` installs are commit-pinned. Verification is a point-in-time snapshot — re-check the
@@ -143,7 +143,7 @@ bash scripts/bootstrap.sh --agent pi
 
 Runs `pi install git:github.com/<owner/repo>` for compound-engineering and ponytail (Pi has no
 marketplaces), `pi install <clone>` for overdrive, `pi install npm:pi-subagents`,
-`pi install npm:pi-mcp-adapter`, and pinned `npx skills … -a pi -g -y` packs. Copies
+`pi install npm:pi-mcp-adapter`, `pi install npm:pi-ask-user` (compound-engineering asks blocking questions through it), and pinned `npx skills … -a pi -g -y` packs. Copies
 `.mcp.json` to `~/.pi/agent/mcp.json` only if that file is absent.
 
 Manual: restart pi.
@@ -171,11 +171,15 @@ Uninstall: reverse `omp plugin link` per `omp plugin --help` (unverified).
 ## Cursor
 
 `.cursor/rules/overdrive.mdc` (frontmatter `alwaysApply`) points Cursor at `AGENTS.md`, which
-Cursor also reads natively. For the MCP servers in every project, copy the `mcpServers` block
-of `.mcp.json` into `~/.cursor/mcp.json`. Bootstrap does nothing else for Cursor.
+Cursor also reads natively. When Cursor is present (`cursor` on `PATH` or `~/.cursor/` exists),
+bootstrap copies `.mcp.json` to `~/.cursor/mcp.json` so every project gets both MCP servers,
+only if that file is absent; otherwise merge its `mcpServers` block by hand. Not verified on a
+real Cursor.
 
 ## Gemini
 
 `.gemini/settings.json` sets `GEMINI.md` as the context file and declares the two MCP
-servers for this clone; copy its `mcpServers` block into `~/.gemini/settings.json` for every
-project. `GEMINI.md` points back at `AGENTS.md`. Bootstrap does nothing for Gemini.
+servers for this clone. When Gemini is present (`gemini` on `PATH` or `~/.gemini/` exists),
+bootstrap copies it to `~/.gemini/settings.json` for every project, only if that file is absent;
+otherwise merge its `mcpServers` block by hand. `GEMINI.md` points back at `AGENTS.md`. Not
+verified on a real Gemini.

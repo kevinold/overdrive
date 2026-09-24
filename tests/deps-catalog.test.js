@@ -21,6 +21,11 @@ test('catalog is exactly the harness dependency set', () => {
   assert.deepEqual(rows.map((r) => r.dep), HARNESS_DEPS);
 });
 
+test('compound-engineering, the harness core, is first and installs natively on every host', () => {
+  assert.equal(rows[0].dep, 'compound-engineering');
+  for (const h of HOSTS) assert.equal(rows[0][h], 'native', h);
+});
+
 test('skills-method installs pin exactly the harness skill set', () => {
   const skills = rows.filter((r) => r.skills !== '-').flatMap((r) => r.skills.split(' '));
   assert.deepEqual(skills.sort(), [...HARNESS_SKILLS].sort());

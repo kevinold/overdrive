@@ -91,6 +91,7 @@ test('pi dry-run: companions, self-install from the clone, skills', () => {
   assert.equal(r.status, 0, r.stderr);
   assert.match(r.stdout, /DRY-RUN: pi install npm:pi-subagents/);
   assert.match(r.stdout, /DRY-RUN: pi install npm:pi-mcp-adapter/);
+  assert.match(r.stdout, /DRY-RUN: pi install npm:pi-ask-user/);
   assert.ok(lines(r.stdout).includes(`DRY-RUN: pi install ${ROOT}`));
   assert.match(r.stdout, /DRY-RUN: pi install git:github\.com\/EveryInc\/compound-engineering-plugin/);
   assert.match(r.stdout, /-a pi -g -y/);
