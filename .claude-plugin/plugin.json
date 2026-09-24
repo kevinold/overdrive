@@ -1,0 +1,9 @@
+{
+  "name": "overdrive",
+  "version": "0.1.0",
+  "description": "A harness that assembles the right set of tools to get more out of every token.",
+  "author": { "name": "Kevin Old" },
+  "repository": "https://github.com/kevinold/overdrive",
+  "license": "MIT",
+  "hooks": "./hooks/hooks.json"
+}
