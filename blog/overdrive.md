@@ -124,15 +124,18 @@ The whole harness is a starter repo. Clone it. Run one command.
 
 ```bash
 git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh              # installs the whole harness
-bash scripts/bootstrap.sh --dry-run    # prints every action, changes nothing
+bash scripts/bootstrap.sh                   # every agent found on your PATH
+bash scripts/bootstrap.sh --agent codex,pi  # or pick the agents
+bash scripts/bootstrap.sh --dry-run         # prints every action, changes nothing
 ```
 
-One command sets up the whole harness. It prints the plugin installs for you to paste into Claude Code, wires the MCP servers into Codex, pins the CLI tools, and seeds your config. Run it with `--dry-run` first to see every action.
+One command sets up the whole harness for each agent you use. It installs the plugins, skills, and hooks through that agent's own plugin system, wires the MCP servers, pins the CLI tools, and seeds your config. Run it with `--dry-run` first to see every action.
 
-It all runs on the Claude subscription you already have. The one exception is the codex peer. It's optional, and it's the only part that costs extra.
+The subscription you already have covers the basic setup. The one exception is the codex peer. It's optional, and it's the only part that costs extra.
 
-One boundary, so you're not surprised. overdrive is a [Claude Code](https://claude.com/claude-code) harness that ports its conventions to any agent. It is not a full harness for every agent. The `AGENTS.md` contract and the two MCP servers work anywhere that reads `AGENTS.md` and speaks [MCP](https://modelcontextprotocol.io). Codex, Cursor, Gemini, and OpenCode all get that. The plugins, skills, and hooks are Claude Code only. Don't expect Cursor to run `ce-plan`. Do expect every agent to share the same context contract and memory.
+It isn't a Claude Code harness anymore. [Claude Code](https://claude.com/claude-code), [Codex](https://github.com/openai/codex), [OpenCode](https://opencode.ai), [Pi](https://github.com/badlogic/pi-mono), and [oh-my-pi](https://github.com/can1357/oh-my-pi) all get the full harness: the skills, the hooks that set the house style, the MCP servers, and the gears. Each gets it its own way. A plugin where the upstream project ships one for that agent. Commit-pinned skills through [`npx skills`](https://github.com/vercel-labs/skills) where only the skills port. A printed skip where nothing ports, like the agent-only packs. Cursor and Gemini still get the `AGENTS.md` contract and the two MCP servers.
+
+Not every agent gets every piece, and the repo says where the gaps are. [`docs/capability-matrix.md`](../docs/capability-matrix.md) lists them per agent: which hook runs where, which packs stay Claude-only, how each agent sets its gears. [`harness/deps.tsv`](../harness/deps.tsv) is the one table that decides how each dependency lands on each agent.
 
 Before you run it on anything that matters, skim [`docs/harness-inventory.md`](../docs/harness-inventory.md) and [`docs/install.md`](../docs/install.md), and read the marketplace list. You're installing third-party plugins that can run commands in your agent's environment. Trust, then verify.
 
