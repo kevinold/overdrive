@@ -18,9 +18,8 @@ Notes:
 
 - **Two freshness models.** Native plugin installs are unpinned and track the marketplace
   HEAD. `skills`-method installs are commit-pinned to the `ref` column of `harness/deps.tsv`.
-- **Commands and hooks stay Claude-only.** Dependencies that ship only commands and Stop hooks
-  (`ralph-loop`, `ralph-wiggum`) and the LSP pack (`typescript-lsp`) are skipped off-Claude; the
-  `note` column says why.
+- **Every catalog dependency reaches every full-harness host.** None is Claude-only today; a
+  future `none` cell prints a skip with the row's `note`.
 - **Caveman** off-Claude is three pinned skills (`caveman`, `caveman-commit`,
   `caveman-review`). Its always-on hook exists only on Claude Code.
 - **agent-browser** off-Claude pins only the `agent-browser` skill and needs the

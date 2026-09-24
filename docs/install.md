@@ -10,8 +10,7 @@ What gets installed, per dependency and host: `harness/deps.tsv`.
 
 Vetted marketplaces (verified **2026-09-04**):
 
-- `compound-engineering-plugin`, `claude-plugins-official`, `claude-code-plugins`
-- `agent-browser`, `caveman`, `ponytail`
+- `compound-engineering-plugin`, `agent-browser`, `caveman`, `ponytail`
 
 The catalog holds only what the harness uses (plan/build/review/ship/learn, the two house-style
 lenses, browser testing). Add a row to `harness/deps.tsv` to bring another pack in.

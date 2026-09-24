@@ -14,7 +14,7 @@ const rows = data.map((cells) => Object.fromEntries(HEADER.map((h, i) => [h, cel
 test('header matches catalog columns', () => assert.deepEqual(header, HEADER));
 
 // The catalog installs only what the harness's SDLC loop uses; adding a pack is a deliberate edit here.
-const HARNESS_DEPS = ['compound-engineering', 'typescript-lsp', 'ralph-loop', 'agent-browser', 'ralph-wiggum', 'caveman', 'ponytail'];
+const HARNESS_DEPS = ['compound-engineering', 'agent-browser', 'caveman', 'ponytail'];
 const HARNESS_SKILLS = ['agent-browser', 'caveman', 'caveman-commit', 'caveman-review'];
 
 test('catalog is exactly the harness dependency set', () => {

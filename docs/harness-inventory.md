@@ -4,7 +4,7 @@ Verified **2026-09-04**. Review this before running `scripts/bootstrap.sh` on a 
 
 ## Dependencies
 
-`harness/deps.tsv` is the single source: 7 dependencies across 6 marketplaces, one row each,
+`harness/deps.tsv` is the single source: 4 dependencies across 4 marketplaces, one row each,
 with a method per host. GitHub renders it as a table. Three methods:
 
 - **`native`** — the host's own plugin install (Claude/Codex/omp marketplaces, Pi `pi install`,

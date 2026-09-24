@@ -59,7 +59,7 @@ test('claude-code, pi, and omp register both MCP servers at user scope with the 
   assert.ok(L.includes(`DRY-RUN: cp ${ROOT}/.mcp.json ${home}/.omp/agent/mcp.json`));
 });
 
-test('codex dry-run: native, skills, none rows + MCP + trust checklist', () => {
+test('codex dry-run: native and skills rows + MCP + trust checklist', () => {
   const r = boot(['--dry-run', '--agent', 'codex']);
   assert.equal(r.status, 0, r.stderr);
   const out = r.stdout;
@@ -71,9 +71,22 @@ test('codex dry-run: native, skills, none rows + MCP + trust checklist', () => {
   assert.match(out, /DRY-RUN: codex mcp add codebase-memory-mcp -- mise exec github:DeusData\/codebase-memory-mcp@0\.11\.0 -- codebase-memory-mcp/);
   assert.match(out, /\[features\] hooks = true/);
   assert.match(out, /\/hooks/);
-  assert.equal(lines(out).filter((l) => l.startsWith('skip typescript-lsp on codex:')).length, 1);
-  assert.ok(lines(out).includes('skip typescript-lsp on codex: LSP manifest; binary is a tool prerequisite'));
-  assert.doesNotMatch(out, /typescript-lsp@/);
+});
+
+// The shipped catalog has no `none` rows or shared marketplaces; a fixture catalog keeps both paths covered.
+test('fixture catalog: none rows print a skip, marketplace adds dedupe per (host, marketplace)', () => {
+  const repo = repoCopy();
+  const cols = 'dep\tmarketplace\tsource\tref\tskills\tclaude-code\tcodex\topencode\tpi\tomp\tnote';
+  writeFileSync(join(repo, 'harness/deps.tsv'), [cols,
+    'alpha\tshared\towner/shared\t-\t-\tnative\tnative\tnone\tnone\tnone\t-',
+    'beta\tshared\towner/shared\t-\t-\tnative\tnone\tnone\tnone\tnone\tagents only, no skill form', ''].join('\n'));
+  const r = boot(['--dry-run', '--agent', 'claude-code,codex'], { root: repo, home: tmp('od-home-') });
+  assert.equal(r.status, 0, r.stderr);
+  const L = lines(r.stdout);
+  assert.equal(L.filter((l) => l === 'DRY-RUN: claude plugin marketplace add owner/shared').length, 1);
+  assert.ok(L.includes('DRY-RUN: claude plugin install alpha@shared') && L.includes('DRY-RUN: claude plugin install beta@shared'));
+  assert.ok(L.includes('skip beta on codex: agents only, no skill form'));
+  assert.doesNotMatch(r.stdout, /codex plugin add beta@/);
 });
 
 test('detection without --agent picks only hosts on PATH', () => {
@@ -108,9 +121,6 @@ test('omp dry-run with omp absent: all actions DRY-RUN, marketplace pairs, link,
   assert.match(r.stdout, /DRY-RUN: omp plugin install caveman@caveman/);
   assert.ok(lines(r.stdout).includes(`DRY-RUN: omp plugin link ${ROOT}`));
   assert.doesNotMatch(r.stdout, /npx -y skills/);
-  // marketplace adds dedupe per (host, marketplace): claude-plugins-official carries two claude-native rows
-  const c = boot(['--dry-run', '--agent', 'claude-code']);
-  assert.equal(lines(c.stdout).filter((l) => l === 'DRY-RUN: claude plugin marketplace add anthropics/claude-plugins-official').length, 1);
 });
 
 test('opencode dry-run: plugin snippet + npx skills', () => {

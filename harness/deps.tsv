@@ -5,9 +5,6 @@
 # Host columns: native (host plugin install) | skills (npx skills -a <host> -g) | none (skipped, see note). omp is never skills (no npx skills target).
 dep	marketplace	source	ref	skills	claude-code	codex	opencode	pi	omp	note
 compound-engineering	compound-engineering-plugin	EveryInc/compound-engineering-plugin	-	-	native	native	native	native	native	ships every host's manifest
-typescript-lsp	claude-plugins-official	anthropics/claude-plugins-official	-	-	native	none	none	none	none	LSP manifest; binary is a tool prerequisite
-ralph-loop	claude-plugins-official	anthropics/claude-plugins-official	-	-	native	none	none	none	none	Stop hook + commands only
 agent-browser	agent-browser	vercel-labs/agent-browser	e4e2fe8633be35e2e4567a464604e6a314e74279	agent-browser	native	skills	skills	skills	native	needs the agent-browser binary; other 5 repo skills not pinned
-ralph-wiggum	claude-code-plugins	anthropics/claude-code	-	-	native	none	none	none	none	Stop hook + commands only
 caveman	caveman	JuliusBrussee/caveman	655b7d9c5431f822264b7732e9901c5578ac84cf	caveman caveman-commit caveman-review	native	skills	skills	skills	native	house-style lens + commit/review variants only; always-on hook Claude-only
 ponytail	ponytail	DietrichGebert/ponytail	-	-	native	native	native	native	native	hooks on Claude/Codex/Pi/OpenCode natively
