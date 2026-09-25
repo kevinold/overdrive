@@ -244,7 +244,13 @@ test('--check installs every skills row into a throwaway copy and verifies SKILL
   for (const agent of ['pi', 'omp', 'opencode', 'gemini', 'cursor']) {
     assert.match(r.stdout, new RegExp(`^ok\\s+${agent} codebase-memory-mcp: stub-cbm`, 'm'), agent);
   }
-  assert.ok(!existsSync(join(home, '.omp')) && !existsSync(join(home, '.pi')), 'real HOME untouched');
+  // Cursor/Gemini must be merged into and probed from the sandboxed HOME, not the repo's own source configs.
+  const workHome = r.stdout.match(/\(HOME=([^)]+)\)/)[1];
+  assert.ok(r.stdout.includes(`cursor=mcpServers:${workHome}/.cursor/mcp.json`), r.stdout);
+  assert.ok(r.stdout.includes(`gemini=mcpServers:${workHome}/.gemini/settings.json`), r.stdout);
+  assert.ok(!r.stdout.includes(`cursor=mcpServers:${ROOT}/.mcp.json`), 'cursor probe must not read the repo source config');
+  assert.ok(!r.stdout.includes(`gemini=mcpServers:${ROOT}/.gemini/settings.json`), 'gemini probe must not read the repo source config');
+  assert.ok(!existsSync(join(home, '.omp')) && !existsSync(join(home, '.pi')) && !existsSync(join(home, '.cursor')) && !existsSync(join(home, '.gemini')), 'real HOME untouched');
   assert.match(r.stdout, /skills present in \.claude\/skills, \.agents\/skills, \.pi\/skills/);
   assert.match(r.stdout, /-a claude-code universal pi -y --copy/);
   const l = readFileSync(log, 'utf8');

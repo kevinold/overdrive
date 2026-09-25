@@ -135,7 +135,9 @@ if [ -n "$CHECK" ]; then
   else echo "codex: binary not found, registration not exercised"; fi
   mcp_merge "$HOME/.pi/agent/mcp.json"; probes+=("pi=mcpServers:$HOME/.pi/agent/mcp.json")
   mcp_merge "$HOME/.omp/agent/mcp.json"; probes+=("omp=mcpServers:$HOME/.omp/agent/mcp.json")
-  probes+=("opencode=opencode:$ROOT/.opencode/opencode.json" "gemini=mcpServers:$ROOT/.gemini/settings.json" "cursor=mcpServers:$ROOT/.mcp.json")
+  mcp_merge "$HOME/.cursor/mcp.json" "$ROOT/.mcp.json"; probes+=("cursor=mcpServers:$HOME/.cursor/mcp.json")
+  mcp_merge "$HOME/.gemini/settings.json" "$ROOT/.gemini/settings.json"; probes+=("gemini=mcpServers:$HOME/.gemini/settings.json")
+  probes+=("opencode=opencode:$ROOT/.opencode/opencode.json")
   HOME="$REAL_HOME" # servers launch with the real HOME, as each agent would run them
   run node "$ROOT/scripts/mcp-probe.mjs" --cwd "$WORK/project" "${probes[@]}"
 
