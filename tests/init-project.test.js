@@ -5,7 +5,7 @@ import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, symlinkSync, 
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { initProject, projectCommands } from '../scripts/init-project.mjs';
+import { initProject, mergeMcp, projectCommands } from '../scripts/init-project.mjs';
 
 const ROOT = fileURLToPath(new URL('..', import.meta.url));
 const TMP = [];
@@ -186,4 +186,34 @@ test('--project-plugins dry-run writes nothing; bootstrap passes the flag throug
   const r = spawnSync('/bin/bash', [join(ROOT, 'scripts/bootstrap.sh'), '--init', d, '--project-plugins'], { encoding: 'utf8' });
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.ok(existsSync(join(d, '.claude/settings.json')));
+});
+
+test('mergeMcp adds only missing servers, keeps the user\'s servers and other keys, and reruns unchanged', () => {
+  const d = project({ 'src.json': { mcpServers: { context7: { url: 'new' }, 'codebase-memory-mcp': { command: 'mise' } } },
+    'dest.json': { theme: 'dark', mcpServers: { mine: { command: 'x' }, context7: { url: 'old' } } } });
+  const logs = [];
+  mergeMcp(join(d, 'dest.json'), join(d, 'src.json'), { log: (l) => logs.push(l) });
+  assert.deepEqual(JSON.parse(read(d, 'dest.json')),
+    { theme: 'dark', mcpServers: { mine: { command: 'x' }, context7: { url: 'old' }, 'codebase-memory-mcp': { command: 'mise' } } });
+  assert.match(logs[0], /^update .*dest\.json \(add codebase-memory-mcp\)$/);
+  mergeMcp(join(d, 'dest.json'), join(d, 'src.json'), { log: (l) => logs.push(l) });
+  assert.match(logs[1], /^unchanged /);
+});
+
+test('mergeMcp creates an absent file with mcpServers only; dry-run writes nothing', () => {
+  const d = project({ 'src.json': { contextFileName: 'GEMINI.md', mcpServers: { a: { url: 'u' } } } });
+  const logs = [];
+  mergeMcp(join(d, 'sub/dest.json'), join(d, 'src.json'), { dryRun: true, log: (l) => logs.push(l) });
+  assert.ok(!existsSync(join(d, 'sub/dest.json')));
+  assert.match(logs[0], /^DRY-RUN: create .*sub\/dest\.json$/);
+  mergeMcp(join(d, 'sub/dest.json'), join(d, 'src.json'), quiet);
+  assert.deepEqual(JSON.parse(read(d, 'sub/dest.json')), { mcpServers: { a: { url: 'u' } } });
+});
+
+test('mergeMcp leaves invalid JSON byte-identical and warns', () => {
+  const d = project({ 'src.json': { mcpServers: { a: { url: 'u' } } }, 'dest.json': '{ not json' });
+  const r = spawnSync(process.execPath, [join(ROOT, 'scripts/init-project.mjs'), '--merge-mcp', join(d, 'dest.json'), join(d, 'src.json')], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(read(d, 'dest.json'), '{ not json');
+  assert.match(r.stderr, /warning: .*dest\.json is not valid JSON; left untouched/);
 });
