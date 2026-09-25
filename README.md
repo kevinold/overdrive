@@ -10,14 +10,18 @@ knowledge compounds across sessions.
 
 ## Install
 
+No clone needed. npx fetches the repo and runs `scripts/bootstrap.sh` with your flags:
+
 ```bash
-git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh                 # every agent host found on PATH
-bash scripts/bootstrap.sh --agent codex   # or pick hosts: claude-code,codex,opencode,pi,omp
-bash scripts/bootstrap.sh --dry-run       # print every action, mutate nothing
-bash scripts/bootstrap.sh --check ~/code/app  # preview skills, MCP, and --init on a throwaway copy
-bash scripts/bootstrap.sh --init ~/code/app   # overlay the harness onto a project
+npx -y github:kevinold/overdrive                 # every agent host found on PATH
+npx -y github:kevinold/overdrive --agent codex   # or pick hosts: claude-code,codex,opencode,pi,omp
+npx -y github:kevinold/overdrive --dry-run       # print every action, mutate nothing
+npx -y github:kevinold/overdrive --check .       # preview skills, MCP, and --init on a throwaway copy
+npx -y github:kevinold/overdrive --init .        # overlay the harness onto the project you're in
 ```
+
+Prefer a clone? `git clone git@github.com:kevinold/overdrive.git` and run
+`bash scripts/bootstrap.sh` with the same flags. Pin a version with `github:kevinold/overdrive#<tag-or-sha>`.
 
 The first run sets up your agents, once per machine. `--init` then adds the harness to each
 project. It works on an existing repo, and on a new one right after `cargo new` or `npm create`.
@@ -40,14 +44,14 @@ and reads the manifest meant for it:
 | Pi | `pi install git:github.com/kevinold/overdrive` | `package.json` `pi` |
 | omp | `omp plugin marketplace add kevinold/overdrive` + `omp plugin install overdrive@overdrive` | `.omp-plugin/marketplace.json` |
 
-Every manifest points at the same `skills/`, `agents/`, and `hooks/`. Your clone is only the
-installer, so after bootstrap you can move or delete it. Update overdrive with each agent's own
+Every manifest points at the same `skills/`, `agents/`, and `hooks/`. The npx copy (or your
+clone) is only the installer; nothing depends on it after bootstrap. Update overdrive with each agent's own
 update command (e.g. `claude plugin update overdrive@overdrive`, `omp plugin upgrade
 overdrive@overdrive`), or rerun bootstrap. Working on overdrive itself? `--dev` installs from
 your clone's path instead, so local edits take effect.
 
-Review `docs/install.md` and `docs/harness-inventory.md` before running bootstrap on a fresh
-clone — it adds third-party marketplaces and MCP servers.
+Review `docs/install.md` and `docs/harness-inventory.md` before running bootstrap — it adds
+third-party marketplaces and MCP servers. `--dry-run` shows every action first.
 
 ## Model gears
 

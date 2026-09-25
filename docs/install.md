@@ -6,7 +6,8 @@ What gets installed, per dependency and host: `harness/deps.tsv`.
 ## Before you run bootstrap (supply chain)
 
 `scripts/bootstrap.sh` adds third-party plugin marketplaces, skill packages, and MCP servers.
-**Review the list before running it on a fresh clone.**
+**Review the list before running it.** No clone needed: `npx -y github:kevinold/overdrive <flags>`
+runs `scripts/bootstrap.sh` from a fetched copy; every `bash scripts/bootstrap.sh` below works the same way.
 
 Vetted marketplaces (verified **2026-09-04**):
 

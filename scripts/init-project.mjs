@@ -68,7 +68,7 @@ export function harnessBlock(dir) {
     START,
     '## Overdrive harness',
     '',
-    `This project uses the [overdrive](${REPO_URL}) harness. Install or update the agent side (plugins, skills, hooks, MCP) from an overdrive clone with \`bash scripts/bootstrap.sh\`; what each agent gets: [capability matrix](${REPO_URL}/blob/main/docs/capability-matrix.md).`,
+    `This project uses the [overdrive](${REPO_URL}) harness. Install or update the agent side (plugins, skills, hooks, MCP) with \`npx -y github:kevinold/overdrive\`; what each agent gets: [capability matrix](${REPO_URL}/blob/main/docs/capability-matrix.md).`,
     '',
     '### Project commands',
     '',
