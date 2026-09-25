@@ -115,4 +115,5 @@ export async function main(argv) {
 }
 
 // realpath: import.meta.url is symlink-resolved (macOS /var -> /private/var, npx caches), argv[1] is not.
-if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+// argv[1] is undefined when the module is imported rather than run as a script.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));

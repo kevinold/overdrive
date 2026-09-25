@@ -45,6 +45,12 @@ test('every shipped agent config launches codebase-memory-mcp with the pinned mi
   assert.match(codexRef, new RegExp(`"github:DeusData/codebase-memory-mcp@${pin.replace(/\./g, '\\.')}"`));
 });
 
+test('importing the module with no script path (process.argv[1] undefined) does not throw ENOENT', () => {
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(PROBE)}); console.log('ok')`], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ok/);
+});
+
 test('serversFrom normalizes every agent format', () => {
   assert.deepEqual(serversFrom('opencode', JSON.stringify({ mcp: { a: { type: 'local', command: ['x', 'y'] }, b: { type: 'remote', url: 'https://u' } } })),
     [{ name: 'a', command: 'x', args: ['y'] }, { name: 'b', url: 'https://u' }]);

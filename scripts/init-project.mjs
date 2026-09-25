@@ -36,10 +36,13 @@ const addServers = (into, from) => { for (const [k, v] of Object.entries(from)) 
 function mergeJson(file, fn, { dryRun = false, log = console.log, label = file, note = '' } = {}) {
   let cur = null;
   if (existsSync(file)) {
-    try { cur = JSON.parse(readFileSync(file, 'utf8')); } catch {
+    let parsed;
+    try { parsed = JSON.parse(readFileSync(file, 'utf8')); } catch { /* handled below */ }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
       console.error(`warning: ${file} is not valid JSON; left untouched`);
       return;
     }
+    cur = parsed;
   }
   const next = fn(structuredClone(cur ?? {}));
   if (cur && JSON.stringify(cur) === JSON.stringify(next)) return log(`unchanged ${label}`);
@@ -188,7 +191,8 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
 }
 
 // realpath: import.meta.url is symlink-resolved (macOS /var -> /private/var, npx caches), argv[1] is not.
-if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
+// argv[1] is undefined when the module is imported rather than run as a script.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args[0] === '--merge-mcp') { // bootstrap.sh: add missing harness MCP servers to an agent's global config
     const [dest, src] = args.slice(1).filter((a) => !a.startsWith('--'));

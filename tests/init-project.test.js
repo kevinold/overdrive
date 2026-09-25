@@ -217,3 +217,19 @@ test('mergeMcp leaves invalid JSON byte-identical and warns', () => {
   assert.equal(read(d, 'dest.json'), '{ not json');
   assert.match(r.stderr, /warning: .*dest\.json is not valid JSON; left untouched/);
 });
+
+test('mergeMcp leaves a non-object JSON dest (array or null) byte-identical and warns', () => {
+  for (const body of ['[]', 'null']) {
+    const d = project({ 'src.json': { mcpServers: { a: { url: 'u' } } }, 'dest.json': body });
+    const r = spawnSync(process.execPath, [join(ROOT, 'scripts/init-project.mjs'), '--merge-mcp', join(d, 'dest.json'), join(d, 'src.json')], { encoding: 'utf8' });
+    assert.equal(r.status, 0, r.stderr);
+    assert.equal(read(d, 'dest.json'), body);
+    assert.match(r.stderr, /warning: .*dest\.json is not valid JSON; left untouched/);
+  }
+});
+
+test('importing the module with no script path (process.argv[1] undefined) does not throw ENOENT', () => {
+  const r = spawnSync(process.execPath, ['--input-type=module', '-e', `await import(${JSON.stringify(join(ROOT, 'scripts/init-project.mjs'))}); console.log('ok')`], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.match(r.stdout, /ok/);
+});
