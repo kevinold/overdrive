@@ -99,6 +99,28 @@ Every non-trivial fix becomes a doc the next session reads. `/ce-compound` write
 `docs/solutions/`; file-memory + those docs seed the next cycle. The harness gets more
 effective the longer you use it. See `docs/solutions/README.md`.
 
+## Built on
+
+overdrive assembles other people's work. The harness is theirs; overdrive wires it together.
+
+- **[Compound Engineering](https://github.com/EveryInc/compound-engineering-plugin)** (Every):
+  the core of the harness. `ce-plan`, `ce-work`, `ce-code-review`, `ce-commit-push-pr`,
+  `ce-babysit-pr`, `/ce-compound`, `lfg`, and the rest of the plan → build → review → ship →
+  learn loop. It already ships a native plugin for every agent overdrive targets.
+- **[caveman](https://github.com/JuliusBrussee/caveman)**: terse-output house style, plus the
+  commit and review lenses.
+- **[ponytail](https://github.com/DietrichGebert/ponytail)**: least-code house style: reuse
+  before adding, question whether it needs to exist.
+- **[agent-browser](https://github.com/vercel-labs/agent-browser)**: browser automation for
+  testing UI changes.
+- **MCP servers:** [context7](https://github.com/upstash/context7) (current library docs) and
+  [codebase-memory-mcp](https://github.com/DeusData/codebase-memory-mcp) (code graph).
+- **Plumbing:** [`npx skills`](https://github.com/vercel-labs/skills) installs pinned skills
+  across agents; Pi uses [pi-subagents](https://www.npmjs.com/package/pi-subagents),
+  [pi-mcp-adapter](https://www.npmjs.com/package/pi-mcp-adapter), and
+  [pi-ask-user](https://www.npmjs.com/package/pi-ask-user); [mise](https://mise.jdx.dev) pins
+  the CLI tools.
+
 ## License
 
 MIT — see `LICENSE`.
