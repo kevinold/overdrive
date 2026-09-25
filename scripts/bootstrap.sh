@@ -35,6 +35,10 @@ while [ $# -gt 0 ]; do
   shift
 done
 
+# Resolve project dirs against the caller's cwd before cd-ing into ROOT (`--init .` from a project).
+abs() { if [ -d "$1" ]; then (cd "$1" && pwd); else echo "$1"; fi; }
+[ -n "$INIT" ] && INIT="$(abs "$INIT")"
+[ -n "$CHECK" ] && CHECK="$(abs "$CHECK")"
 ROOT="$(cd "${BASH_SOURCE[0]%/*}/.." && pwd)"
 cd "$ROOT" || exit 1
 RC=0
