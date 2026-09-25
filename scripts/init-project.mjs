@@ -3,7 +3,7 @@
 //   node scripts/init-project.mjs <project-dir> [--dry-run]
 // Writes only what is absent, plus one managed block in AGENTS.md that a rerun replaces.
 // Never touches content outside that block.
-import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sections } from '../hooks/lib.js';
@@ -27,6 +27,51 @@ export function nativeFor(host) {
 }
 
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
+
+const put = (file, text) => { mkdirSync(dirname(file), { recursive: true }); writeFileSync(file, text); };
+const addServers = (into, from) => { for (const [k, v] of Object.entries(from)) into[k] ??= v; return into; };
+
+// Merge fn's result into a JSON file: adds what is missing, never flips a value already set.
+// An unparseable file is left untouched with a warning.
+function mergeJson(file, fn, { dryRun = false, log = console.log, label = file, note = '' } = {}) {
+  let cur = null;
+  if (existsSync(file)) {
+    let parsed;
+    try { parsed = JSON.parse(readFileSync(file, 'utf8')); } catch { /* handled below */ }
+    if (typeof parsed !== 'object' || parsed === null || Array.isArray(parsed)) {
+      console.error(`warning: ${file} is not valid JSON; left untouched`);
+      return;
+    }
+    cur = parsed;
+  }
+  const next = fn(structuredClone(cur ?? {}));
+  if (cur && JSON.stringify(cur) === JSON.stringify(next)) return log(`unchanged ${label}`);
+  log(`${dryRun ? 'DRY-RUN: ' : ''}${cur ? 'update' : 'create'} ${label}${cur ? note : ''}`);
+  if (!dryRun) put(file, `${JSON.stringify(next, null, 2)}\n`);
+}
+
+// Servers in `have` that still use overdrive's own launch and differ from `want` only by a pinned
+// version (`pkg@1.0` vs `pkg@2.0`): an older overdrive release's entry, safe to move to the new pin.
+// Any other difference is the user's customization and is left alone.
+const unpin = (s) => JSON.stringify([s?.command, s?.args?.map((a) => a.replace(/@[^@/]+$/, ''))]);
+export const pinBumps = (have, want) => Object.keys(want).filter((k) =>
+  have[k] && want[k].args && unpin(have[k]) === unpin(want[k]) && JSON.stringify(have[k].args) !== JSON.stringify(want[k].args));
+
+// Add src's MCP servers missing from dest and move overdrive's own entries to new pins. Other keys,
+// other fields of a bumped entry, and servers the user customized stay as they are.
+// ponytail: a fresh dest gets mcpServers only (Gemini's contextFileName is its default anyway).
+export function mergeMcp(dest, src, opts = {}) {
+  const servers = readJson(src).mcpServers;
+  const have = readJson(dest)?.mcpServers ?? {};
+  const added = Object.keys(servers).filter((k) => !(k in have));
+  const bumped = pinBumps(have, servers);
+  const note = [added.length && `add ${added.join(', ')}`, bumped.length && `update ${bumped.join(', ')}`].filter(Boolean).join('; ');
+  mergeJson(dest, (c) => {
+    const m = addServers(c.mcpServers ?? {}, servers);
+    for (const k of bumped) m[k] = { ...m[k], args: servers[k].args };
+    return { ...c, mcpServers: m };
+  }, { ...opts, note: ` (${note})` });
+}
 
 // Verification commands the agents run before calling work done, from the project's own stack.
 export function projectCommands(dir) {
@@ -84,12 +129,11 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
     log(`${dryRun ? 'DRY-RUN: ' : ''}${verb} ${rel}`);
     if (!dryRun) write();
   };
-  const put = (rel, text) => { mkdirSync(dirname(join(dir, rel)), { recursive: true }); writeFileSync(join(dir, rel), text); };
 
   // AGENTS.md: the managed block (Codex, OpenCode, Pi, omp, and Cursor read AGENTS.md natively).
   const agents = join(dir, 'AGENTS.md');
   const block = harnessBlock(dir);
-  if (!existsSync(agents)) act('create', 'AGENTS.md', () => put('AGENTS.md', `${block}\n`));
+  if (!existsSync(agents)) act('create', 'AGENTS.md', () => put(agents, `${block}\n`));
   else {
     const cur = readFileSync(agents, 'utf8');
     const next = BLOCK_RE.test(cur) ? cur.replace(BLOCK_RE, block) : `${cur.replace(/\s*$/, '')}\n\n${block}\n`;
@@ -100,7 +144,7 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
   // Claude Code reads CLAUDE.md and Gemini reads GEMINI.md; both import AGENTS.md with `@AGENTS.md`.
   for (const f of ['CLAUDE.md', 'GEMINI.md']) {
     const p = join(dir, f);
-    if (!existsSync(p)) act('create', `${f} (@AGENTS.md)`, () => put(f, '@AGENTS.md\n'));
+    if (!existsSync(p)) act('create', `${f} (@AGENTS.md)`, () => put(p, '@AGENTS.md\n'));
     else if (lstatSync(p).isSymbolicLink() || /@AGENTS\.md/.test(readFileSync(p, 'utf8'))) log(`unchanged ${f} (already reads AGENTS.md)`);
     else act('update', `${f} (append @AGENTS.md)`, () => writeFileSync(p, `${readFileSync(p, 'utf8').replace(/\s*$/, '')}\n\n@AGENTS.md\n`));
   }
@@ -108,7 +152,7 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
   // Gears config (compound-engineering reads it per repo) and the compounding store.
   for (const [rel, src] of [['.compound-engineering/config.yaml', '.compound-engineering/config.example.yaml'], ['docs/solutions/README.md', 'docs/solutions/README.md']]) {
     if (existsSync(join(dir, rel))) log(`unchanged ${rel} (exists)`);
-    else act('create', rel, () => put(rel, readFileSync(join(ROOT, src), 'utf8')));
+    else act('create', rel, () => put(join(dir, rel), readFileSync(join(ROOT, src), 'utf8')));
   }
 
   // Keep per-developer gear overrides (and Pi's project package cache) out of git.
@@ -127,18 +171,11 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
 
   // --project-plugins: committable, project-scoped plugin + MCP config. Merges: adds what is missing,
   // never flips a value the project already set.
-  const mergeJson = (rel, fn) => {
-    const p = join(dir, rel);
-    const cur = existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null;
-    const next = fn(structuredClone(cur ?? {}));
-    if (cur && JSON.stringify(cur) === JSON.stringify(next)) return log(`unchanged ${rel}`);
-    act(cur ? 'update' : 'create', rel, () => put(rel, `${JSON.stringify(next, null, 2)}\n`));
-  };
-  const addServers = (into, from) => { for (const [k, v] of Object.entries(from)) into[k] ??= v; return into; };
+  const merge = (rel, fn) => mergeJson(join(dir, rel), fn, { dryRun, log, label: rel });
   const union = (list, add) => [...list, ...add.filter((x) => !list.includes(x))];
 
   // Claude Code: teammates who trust the folder are prompted to add these marketplaces and plugins.
-  mergeJson('.claude/settings.json', (c) => {
+  merge('.claude/settings.json', (c) => {
     c.extraKnownMarketplaces ??= {};
     c.enabledPlugins ??= {};
     for (const d of nativeFor('claude-code')) {
@@ -148,27 +185,39 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
     return c;
   });
   // Pi: project packages (installed on first run in the project) plus the companions the harness needs.
-  mergeJson('.pi/settings.json', (c) => {
+  merge('.pi/settings.json', (c) => {
     c.packages = union(c.packages ?? [], [...nativeFor('pi').map((d) => `git:github.com/${d.source}`), ...PI_COMPANIONS]);
     return c;
   });
   // OpenCode: project opencode.json plugins + MCP.
   const ocShipped = readJson(join(ROOT, '.opencode/opencode.json'));
-  mergeJson('opencode.json', (c) => {
+  merge('opencode.json', (c) => {
     c.$schema ??= ocShipped.$schema;
     c.plugin = union(c.plugin ?? [], nativeFor('opencode').map((d) => `${d.dep}@git+https://github.com/${d.source}`));
     c.mcp = addServers(c.mcp ?? {}, ocShipped.mcp);
     return c;
   });
   // Project MCP: .mcp.json (Claude Code, Pi's adapter, omp), Cursor, Gemini.
-  const shipped = readJson(join(ROOT, '.mcp.json')).mcpServers;
-  for (const rel of ['.mcp.json', '.cursor/mcp.json']) mergeJson(rel, (c) => ({ ...c, mcpServers: addServers(c.mcpServers ?? {}, shipped) }));
-  mergeJson('.gemini/settings.json', (c) => ({ ...c, mcpServers: addServers(c.mcpServers ?? {}, readJson(join(ROOT, '.gemini/settings.json')).mcpServers) }));
+  for (const [rel, src] of [['.mcp.json', '.mcp.json'], ['.cursor/mcp.json', '.mcp.json'], ['.gemini/settings.json', '.gemini/settings.json']]) {
+    mergeMcp(join(dir, rel), join(ROOT, src), { dryRun, log, label: rel });
+  }
   log('Codex and omp have no committable project plugin config: each teammate runs bootstrap.sh (see docs/install.md "Install options").');
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// realpath: import.meta.url is symlink-resolved (macOS /var -> /private/var, npx caches), argv[1] is not.
+// argv[1] is undefined when the module is imported rather than run as a script.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
+  if (args[0] === '--merge-mcp') { // bootstrap.sh: add missing harness MCP servers to an agent's global config
+    const [dest, src] = args.slice(1).filter((a) => !a.startsWith('--'));
+    mergeMcp(dest, src, { dryRun: args.includes('--dry-run') });
+    process.exit(0);
+  }
+  if (args[0] === '--pin-bumps') { // bootstrap.sh: names in an agent's config (e.g. ~/.claude.json) due a new pin
+    const [file, src] = args.slice(1);
+    for (const k of pinBumps(readJson(file)?.mcpServers ?? {}, readJson(src).mcpServers)) console.log(k);
+    process.exit(0);
+  }
   const dir = args.find((a) => !a.startsWith('--'));
   if (!dir || !existsSync(dir) || !lstatSync(dir).isDirectory()) {
     console.error(`--init: not a directory: ${dir ?? '(none)'}`);

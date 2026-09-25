@@ -11,7 +11,7 @@ install methods live in `harness/deps.tsv`; install steps in `docs/install.md`.
 | Hook context (overdrive) | `hooks/hooks.json` SessionStart | same `hooks/hooks.json`, after one-time `/hooks` trust (not live-verified) | `.opencode/plugins/overdrive.mjs` system-prompt transform (unit-tested only) | `.pi/extensions/overdrive.js` `before_agent_start` (verified) | Pi extension if A2 holds; else `AGENTS.md` | `AGENTS.md` via `.cursor/rules/overdrive.mdc` | `AGENTS.md` via `GEMINI.md` |
 | House style: ponytail | native hook | native hook | native plugin hook | native hook | skills; hook pending A2 | `AGENTS.md` text | `AGENTS.md` text |
 | House style: caveman | native always-on hook | `/caveman` skills only, no always-on hook | `/caveman` skills only | `/caveman` skills only | `/caveman` skills only | `AGENTS.md` text | `AGENTS.md` text |
-| MCP | `claude mcp add --scope user` (verified: Claude reports both Connected) | `codex mcp add` → `~/.codex/config.toml` (verified) | `.opencode/opencode.json` (project); global snippet printed (config verified) | `pi-mcp-adapter` + `~/.pi/agent/mcp.json` (config verified) | `~/.omp/agent/mcp.json` (config verified) | bootstrap writes `~/.cursor/mcp.json` if absent (config verified) | bootstrap writes `~/.gemini/settings.json` if absent (config verified) |
+| MCP | `claude mcp add --scope user` (verified: Claude reports both Connected) | `codex mcp add` → `~/.codex/config.toml` (verified) | `.opencode/opencode.json` (project); global snippet printed (config verified) | `pi-mcp-adapter` + `~/.pi/agent/mcp.json` (config verified) | `~/.omp/agent/mcp.json` (config verified) | bootstrap merges missing servers into `~/.cursor/mcp.json` (config verified) | bootstrap merges missing servers into `~/.gemini/settings.json` (config verified) |
 | Gears | CE config + `/model` | `model`, profiles | per-agent `model` | `/model`, `--models` | `modelRoles` | host model picker | host model picker |
 
 Notes:
@@ -52,7 +52,7 @@ is no unifying config.
 
 ### Claude Code
 
-`.compound-engineering/config.yaml` (seeded from `config.example.yaml`):
+`.compound-engineering/config.yaml` (seeded from `config.example.yaml`, Compound Engineering's own template, where every key starts commented out; uncomment these to turn the gears on):
 
 ```yaml
 plan_model: fable        # reasoning gear for ce-plan (elevation verified on Claude Code only)

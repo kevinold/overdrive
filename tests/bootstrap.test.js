@@ -40,7 +40,7 @@ function stubDir(stubs = {}) {
 // Temp repo copy so real runs and config tests never touch this checkout.
 function repoCopy() {
   const dir = tmp('od-repo-');
-  for (const p of ['scripts', 'harness', '.mcp.json']) cpSync(join(ROOT, p), join(dir, p), { recursive: true });
+  for (const p of ['scripts', 'harness', 'hooks', '.mcp.json', '.gemini']) cpSync(join(ROOT, p), join(dir, p), { recursive: true });
   mkdirSync(join(dir, '.compound-engineering'));
   cpSync(join(ROOT, '.compound-engineering/config.example.yaml'), join(dir, '.compound-engineering/config.example.yaml'));
   return dir;
@@ -68,8 +68,8 @@ test('claude-code, pi, and omp register both MCP servers at user scope with the 
   const L = lines(r.stdout);
   assert.ok(L.includes('DRY-RUN: claude mcp add --scope user --transport http context7 https://mcp.context7.com/mcp'));
   assert.ok(L.includes('DRY-RUN: claude mcp add --scope user codebase-memory-mcp -- mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp'));
-  assert.ok(L.includes(`DRY-RUN: cp ${ROOT}/.mcp.json ${home}/.pi/agent/mcp.json`));
-  assert.ok(L.includes(`DRY-RUN: cp ${ROOT}/.mcp.json ${home}/.omp/agent/mcp.json`));
+  assert.ok(L.includes(`DRY-RUN: create ${home}/.pi/agent/mcp.json`), r.stdout);
+  assert.ok(L.includes(`DRY-RUN: create ${home}/.omp/agent/mcp.json`));
 });
 
 test('codex dry-run: native and skills rows + MCP + trust checklist', () => {
@@ -190,9 +190,8 @@ test('config.yaml untouched when present; dry-run seeds nothing when absent', ()
   assert.equal(existsSync(cfg), false);
 });
 
-function realRun(stubs, agents) {
+function realRun(stubs, agents, home = tmp('od-home-')) {
   const repo = repoCopy();
-  const home = tmp('od-home-');
   const log = join(home, 'stub.log');
   writeFileSync(log, '');
   const bin = stubDir({ npx: '', mise: '', ...stubs });
@@ -245,7 +244,13 @@ test('--check installs every skills row into a throwaway copy and verifies SKILL
   for (const agent of ['pi', 'omp', 'opencode', 'gemini', 'cursor']) {
     assert.match(r.stdout, new RegExp(`^ok\\s+${agent} codebase-memory-mcp: stub-cbm`, 'm'), agent);
   }
-  assert.ok(!existsSync(join(home, '.omp')) && !existsSync(join(home, '.pi')), 'real HOME untouched');
+  // Cursor/Gemini must be merged into and probed from the sandboxed HOME, not the repo's own source configs.
+  const workHome = r.stdout.match(/\(HOME=([^)]+)\)/)[1];
+  assert.ok(r.stdout.includes(`cursor=mcpServers:${workHome}/.cursor/mcp.json`), r.stdout);
+  assert.ok(r.stdout.includes(`gemini=mcpServers:${workHome}/.gemini/settings.json`), r.stdout);
+  assert.ok(!r.stdout.includes(`cursor=mcpServers:${ROOT}/.mcp.json`), 'cursor probe must not read the repo source config');
+  assert.ok(!r.stdout.includes(`gemini=mcpServers:${ROOT}/.gemini/settings.json`), 'gemini probe must not read the repo source config');
+  assert.ok(!existsSync(join(home, '.omp')) && !existsSync(join(home, '.pi')) && !existsSync(join(home, '.cursor')) && !existsSync(join(home, '.gemini')), 'real HOME untouched');
   assert.match(r.stdout, /skills present in \.claude\/skills, \.agents\/skills, \.pi\/skills/);
   assert.match(r.stdout, /-a claude-code universal pi -y --copy/);
   const l = readFileSync(log, 'utf8');
@@ -300,4 +305,65 @@ test('npx bin runs bootstrap from any cwd; --init . targets the caller\'s projec
   assert.match(r.stdout, /DRY-RUN: create AGENTS\.md/);
   assert.ok(!existsSync(join(proj, 'AGENTS.md')), 'dry-run writes nothing');
   assert.equal(JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).bin.overdrive, './bin/overdrive.mjs');
+});
+
+// Seed a temp HOME with agent config files: { 'rel/path': object | raw string }.
+function seededHome(files) {
+  const home = tmp('od-home-');
+  for (const [rel, body] of Object.entries(files)) {
+    mkdirSync(join(home, rel, '..'), { recursive: true });
+    writeFileSync(join(home, rel), typeof body === 'string' ? body : JSON.stringify(body));
+  }
+  return home;
+}
+const PI_MCP = '.pi/agent/mcp.json';
+const userPi = { mcpServers: { mine: { command: 'x' }, context7: { url: 'old' } } };
+
+test('rerun: dry-run names the servers it would add to an existing Pi config and changes nothing', () => {
+  const home = seededHome({ [PI_MCP]: userPi });
+  const before = readFileSync(join(home, PI_MCP), 'utf8');
+  const r = boot(['--dry-run', '--agent', 'pi'], { home });
+  assert.equal(r.status, 0, r.stderr);
+  assert.ok(lines(r.stdout).includes(`DRY-RUN: update ${home}/${PI_MCP} (add codebase-memory-mcp)`), r.stdout);
+  assert.equal(readFileSync(join(home, PI_MCP), 'utf8'), before);
+});
+
+test('rerun: real run adds missing servers to Pi, keeps the user\'s, and a second run is unchanged', () => {
+  const home = seededHome({ [PI_MCP]: userPi });
+  realRun({ pi: '' }, 'pi', home);
+  const got = JSON.parse(readFileSync(join(home, PI_MCP), 'utf8')).mcpServers;
+  assert.deepEqual(Object.keys(got), ['mine', 'context7', 'codebase-memory-mcp']);
+  assert.deepEqual(got.context7, { url: 'old' });
+  const { r } = realRun({ pi: '' }, 'pi', home);
+  assert.match(r.stdout, new RegExp(`unchanged ${home}/${PI_MCP}`));
+});
+
+test('rerun: invalid omp JSON is left byte-identical with a warning, not a failure', () => {
+  const home = seededHome({ '.omp/agent/mcp.json': '{ broken' });
+  const { r } = realRun({ omp: '' }, 'omp', home);
+  assert.equal(readFileSync(join(home, '.omp/agent/mcp.json'), 'utf8'), '{ broken');
+  assert.match(r.stderr, /warning: .*\.omp\/agent\/mcp\.json is not valid JSON; left untouched/);
+  assert.doesNotMatch(r.stdout, /== Failures ==/);
+});
+
+test('rerun: existing Gemini settings keep their keys and servers and gain the harness servers', () => {
+  const home = seededHome({ '.gemini/settings.json': { theme: 'dark', mcpServers: { mine: { command: 'x' } } } });
+  realRun({ pi: '' }, 'pi', home);
+  const got = JSON.parse(readFileSync(join(home, '.gemini/settings.json'), 'utf8'));
+  assert.equal(got.theme, 'dark');
+  assert.equal(got.contextFileName, undefined);
+  assert.deepEqual(Object.keys(got.mcpServers), ['mine', 'context7', 'codebase-memory-mcp']);
+  assert.equal(got.mcpServers.context7.httpUrl, 'https://mcp.context7.com/mcp');
+});
+
+test('claude-code: an older overdrive pin is removed before re-adding; a current one is left', () => {
+  const pin = (v) => ({ mcpServers: { 'codebase-memory-mcp': { type: 'stdio', command: 'mise', args: ['exec', `github:DeusData/codebase-memory-mcp@${v}`, '--', 'codebase-memory-mcp'], env: {} } } });
+  const old = seededHome({ '.claude.json': pin('0.0.1') });
+  const L = lines(boot(['--dry-run', '--agent', 'claude-code'], { home: old }).stdout);
+  const rm = L.indexOf('DRY-RUN: claude mcp remove --scope user codebase-memory-mcp');
+  assert.ok(rm >= 0, L.join('\n'));
+  assert.ok(rm < L.findIndex((l) => l.startsWith('DRY-RUN: claude mcp add --scope user codebase-memory-mcp')));
+  const pinNow = readFileSync(join(ROOT, 'scripts/bootstrap.sh'), 'utf8').match(/codebase-memory-mcp@([\d.]+)"/)[1];
+  const cur = seededHome({ '.claude.json': pin(pinNow) });
+  assert.doesNotMatch(boot(['--dry-run', '--agent', 'claude-code'], { home: cur }).stdout, /claude mcp remove/);
 });
