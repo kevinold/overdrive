@@ -41,7 +41,7 @@ Notes:
   "config verified" in the MCP row means `--check` launched every server that agent's config names
   and completed an MCP `initialize` from inside a sample project; the agent itself loading the file
   is verified only for Claude Code.
-- **A4 — verified.** Codex accepts the local marketplace: `codex plugin marketplace add <clone>`
+- **A4 — verified.** Codex accepts overdrive as a marketplace (verified from a local clone; the GitHub source `kevinold/overdrive` is the same manifest): `codex plugin marketplace add <clone>`
   + `codex plugin add overdrive@overdrive` succeed.
 
 ## Gears per host

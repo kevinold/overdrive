@@ -71,8 +71,51 @@ No flag and no host on `PATH` is an error. A real run needs `node` ≥ 18; a dry
 and works without the host binaries. Re-running is safe. The run ends with a numbered manual
 checklist for the steps a shell cannot take.
 
-Bootstrap installs overdrive itself from the clone's absolute path, so keep the clone where it
-is.
+Bootstrap installs overdrive itself from GitHub (`kevinold/overdrive`), so the clone can move
+or go away afterwards. Working on overdrive itself? Add `--dev` to install from this clone's
+path instead.
+
+## Use it in a project
+
+The steps above set up your agents once per machine. The harness also has a small per-project
+part: the conventions agents read, the gears config, and the compounding store.
+`--init` writes it into a project:
+
+```bash
+bash scripts/bootstrap.sh --check ~/code/wait-on    # preview everything on a throwaway copy
+bash scripts/bootstrap.sh --init ~/code/wait-on --dry-run
+bash scripts/bootstrap.sh --init ~/code/wait-on
+```
+
+What it writes (only what is absent; nothing outside the managed block is touched):
+
+- **`AGENTS.md`**: one marked "Overdrive harness" block with the project's verification
+  commands, detected from its stack, plus the gears, house style, egress disclosure, and
+  compounding loop. Codex, OpenCode, Pi, omp, and Cursor read `AGENTS.md` natively. Rerun `--init`
+  to refresh the block after updating overdrive.
+- **`CLAUDE.md` / `GEMINI.md`**: `@AGENTS.md` imports, so Claude Code and Gemini read the same
+  file. An existing file gets the import appended once; a symlink to `AGENTS.md` is left alone.
+- **`.compound-engineering/config.yaml`**: the gears config (`plan_model`, `brainstorm_model`,
+  `cross_model_peer`); compound-engineering reads it per project.
+- **`docs/solutions/README.md`**: the compounding store `/ce-compound` writes to.
+- **`.gitignore`**: `.compound-engineering/config.local.yaml` (per-developer overrides), when a
+  `.gitignore` exists.
+
+Detected stacks: `Cargo.toml` → `cargo test`, `cargo clippy --all-targets -- -D warnings`,
+`cargo fmt --check`, `cargo build`. `package.json` → the project's own `test` / `lint` /
+`typecheck` / `build` scripts under its package manager (npm, pnpm, yarn, bun). TypeScript
+(`tsconfig.json` or a `typescript` dependency) without a typecheck script adds
+`npx tsc --noEmit`. Anything else gets a note to add the commands below the block.
+
+**New project.** Scaffold it with the language's own tool, then overlay:
+
+```bash
+cargo new myapp && bash scripts/bootstrap.sh --init myapp
+npm create vite@latest myapp -- --template vanilla-ts && bash scripts/bootstrap.sh --init myapp
+```
+
+overdrive keeps no project skeletons of its own. They would go stale, and the language
+scaffolders already do that job.
 
 ## Claude Code
 
@@ -81,7 +124,7 @@ bash scripts/bootstrap.sh --agent claude-code
 ```
 
 Runs `claude plugin marketplace add <owner/repo>` + `claude plugin install <dep>@<marketplace>`
-for every dependency in the catalog, then `claude plugin marketplace add <clone>` +
+for every dependency in the catalog, then `claude plugin marketplace add kevinold/overdrive` +
 `claude plugin install overdrive@overdrive`, and registers both MCP servers at user scope
 (`claude mcp add --scope user …`) so every project gets them.
 
@@ -97,7 +140,7 @@ bash scripts/bootstrap.sh --agent codex
 ```
 
 Native plugins for compound-engineering, ponytail, and overdrive
-(`codex plugin marketplace add <clone>` + `codex plugin add overdrive@overdrive`); pinned
+(`codex plugin marketplace add kevinold/overdrive` + `codex plugin add overdrive@overdrive`); pinned
 `npx skills … -a codex -g -y` for the agent-browser and caveman skills; MCP via
 `codex mcp add context7 --url https://mcp.context7.com/mcp` and
 `codex mcp add codebase-memory-mcp -- mise exec github:DeusData/codebase-memory-mcp@0.11.0 -- codebase-memory-mcp`. Adding
@@ -123,7 +166,7 @@ your config. Paste it into `~/.config/opencode/opencode.json`:
 "plugin": [
   "compound-engineering@git+https://github.com/EveryInc/compound-engineering-plugin",
   "ponytail@git+https://github.com/DietrichGebert/ponytail",
-  "<clone>/.opencode/plugins/overdrive.mjs"
+  "overdrive@git+https://github.com/kevinold/overdrive"
 ]
 ```
 
@@ -141,13 +184,13 @@ bash scripts/bootstrap.sh --agent pi
 ```
 
 Runs `pi install git:github.com/<owner/repo>` for compound-engineering and ponytail (Pi has no
-marketplaces), `pi install <clone>` for overdrive, `pi install npm:pi-subagents`,
+marketplaces), `pi install git:github.com/kevinold/overdrive` for overdrive, `pi install npm:pi-subagents`,
 `pi install npm:pi-mcp-adapter`, `pi install npm:pi-ask-user` (compound-engineering asks blocking questions through it), and pinned `npx skills … -a pi -g -y` packs. Copies
 `.mcp.json` to `~/.pi/agent/mcp.json` only if that file is absent.
 
 Manual: restart pi.
 
-Uninstall: `pi remove <clone-path>` — the same source used to install, not the package name.
+Uninstall: `pi remove git:github.com/kevinold/overdrive` (with `--dev`: `pi remove <clone-path>`) — the same source used to install, not the package name.
 
 ## omp
 
@@ -156,7 +199,7 @@ bash scripts/bootstrap.sh --agent omp
 ```
 
 Runs `omp plugin marketplace add <owner/repo>` + `omp plugin install <dep>@<marketplace>` for
-every dependency with skills, then `omp plugin link <clone>` for overdrive. Not verified on a
+every dependency with skills, then `omp plugin marketplace add kevinold/overdrive` + `omp plugin install overdrive@overdrive` for overdrive. Not verified on a
 real run (Assumptions A1, A2 in `docs/capability-matrix.md`).
 
 Copies `.mcp.json` to `~/.omp/agent/mcp.json` (omp's user MCP config, same `mcpServers` shape)
@@ -165,7 +208,7 @@ only if that file is absent. omp also imports servers from `~/.claude.json` and
 
 Manual: `omp config set marketplace.autoUpdate auto`, then restart omp.
 
-Uninstall: reverse `omp plugin link` per `omp plugin --help` (unverified).
+Uninstall: `omp plugin uninstall overdrive@overdrive` per `omp plugin --help` (unverified).
 
 ## Cursor
 

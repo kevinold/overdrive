@@ -15,8 +15,13 @@ git clone git@github.com:kevinold/overdrive.git && cd overdrive
 bash scripts/bootstrap.sh                 # every agent host found on PATH
 bash scripts/bootstrap.sh --agent codex   # or pick hosts: claude-code,codex,opencode,pi,omp
 bash scripts/bootstrap.sh --dry-run       # print every action, mutate nothing
-bash scripts/bootstrap.sh --check ~/code/app  # try the pinned skill installs in a throwaway copy
+bash scripts/bootstrap.sh --check ~/code/app  # preview skills, MCP, and --init on a throwaway copy
+bash scripts/bootstrap.sh --init ~/code/app   # overlay the harness onto a project
 ```
+
+The first run sets up your agents, once per machine. `--init` then adds the harness to each
+project. It works on an existing repo, and on a new one right after `cargo new` or `npm create`.
+See [Use it in a project](docs/install.md#use-it-in-a-project).
 
 Review `docs/install.md` and `docs/harness-inventory.md` before running bootstrap on a fresh
 clone — it adds third-party marketplaces and MCP servers.

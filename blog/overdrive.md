@@ -127,9 +127,10 @@ git clone git@github.com:kevinold/overdrive.git && cd overdrive
 bash scripts/bootstrap.sh                   # every agent found on your PATH
 bash scripts/bootstrap.sh --agent codex,pi  # or pick the agents
 bash scripts/bootstrap.sh --dry-run         # prints every action, changes nothing
+bash scripts/bootstrap.sh --init ~/code/app # add the harness to a project
 ```
 
-One command sets up the whole harness for each agent you use. It installs the plugins, skills, and hooks through that agent's own plugin system, wires the MCP servers, pins the CLI tools, and seeds your config. Run it with `--dry-run` first to see every action.
+One command sets up the whole harness for each agent you use, once per machine. `--init` then adds the per-project part to any repo, existing or fresh from `cargo new`: the conventions your agents read, the project's own test and lint commands, the gears config, and the `docs/solutions/` store. It installs the plugins, skills, and hooks through that agent's own plugin system, wires the MCP servers, pins the CLI tools, and seeds your config. Run it with `--dry-run` first to see every action.
 
 The subscription you already have covers the basic setup. The one exception is the codex peer. It's optional, and it's the only part that costs extra.
 

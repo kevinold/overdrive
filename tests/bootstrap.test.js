@@ -48,6 +48,19 @@ function repoCopy() {
 
 const lines = (out) => out.split('\n');
 
+test('overdrive installs itself from GitHub by default, from this clone with --dev', () => {
+  const gh = lines(boot(['--dry-run', '--agent', 'claude-code,codex']).stdout);
+  assert.ok(gh.includes('DRY-RUN: claude plugin marketplace add kevinold/overdrive'));
+  assert.ok(gh.includes('DRY-RUN: codex plugin marketplace add kevinold/overdrive'));
+  assert.ok(!gh.some((l) => l.includes(`add ${ROOT}`)), 'no clone path without --dev');
+  const dev = boot(['--dry-run', '--dev', '--agent', 'claude-code,codex,pi,omp,opencode']);
+  const L = lines(dev.stdout);
+  for (const want of [`DRY-RUN: claude plugin marketplace add ${ROOT}`, `DRY-RUN: codex plugin marketplace add ${ROOT}`, `DRY-RUN: pi install ${ROOT}`, `DRY-RUN: omp plugin link ${ROOT}`]) {
+    assert.ok(L.includes(want), want);
+  }
+  assert.ok(dev.stdout.includes(`${ROOT}/.opencode/plugins/overdrive.mjs`));
+});
+
 test('claude-code, pi, and omp register both MCP servers at user scope with the pinned tool', () => {
   const home = tmp('od-home-');
   const r = boot(['--dry-run', '--agent', 'claude-code,pi,omp'], { home });
@@ -105,7 +118,7 @@ test('pi dry-run: companions, self-install from the clone, skills', () => {
   assert.match(r.stdout, /DRY-RUN: pi install npm:pi-subagents/);
   assert.match(r.stdout, /DRY-RUN: pi install npm:pi-mcp-adapter/);
   assert.match(r.stdout, /DRY-RUN: pi install npm:pi-ask-user/);
-  assert.ok(lines(r.stdout).includes(`DRY-RUN: pi install ${ROOT}`));
+  assert.ok(lines(r.stdout).includes('DRY-RUN: pi install git:github.com/kevinold/overdrive'));
   assert.match(r.stdout, /DRY-RUN: pi install git:github\.com\/EveryInc\/compound-engineering-plugin/);
   assert.match(r.stdout, /-a pi -g -y/);
 });
@@ -119,14 +132,15 @@ test('omp dry-run with omp absent: all actions DRY-RUN, marketplace pairs, link,
   for (const l of ompCmds) assert.ok(l.startsWith('DRY-RUN: '), l);
   assert.match(r.stdout, /DRY-RUN: omp plugin marketplace add JuliusBrussee\/caveman/);
   assert.match(r.stdout, /DRY-RUN: omp plugin install caveman@caveman/);
-  assert.ok(lines(r.stdout).includes(`DRY-RUN: omp plugin link ${ROOT}`));
+  assert.ok(lines(r.stdout).includes('DRY-RUN: omp plugin marketplace add kevinold/overdrive'));
+  assert.ok(lines(r.stdout).includes('DRY-RUN: omp plugin install overdrive@overdrive'));
   assert.doesNotMatch(r.stdout, /npx -y skills/);
 });
 
 test('opencode dry-run: plugin snippet + npx skills', () => {
   const r = boot(['--dry-run', '--agent', 'opencode']);
   assert.equal(r.status, 0, r.stderr);
-  assert.ok(r.stdout.includes(`${ROOT}/.opencode/plugins/overdrive.mjs`));
+  assert.ok(r.stdout.includes('"overdrive@git+https://github.com/kevinold/overdrive"'));
   assert.match(r.stdout, /compound-engineering@git\+https:\/\/github\.com\/EveryInc\/compound-engineering-plugin/);
   assert.match(r.stdout, /ponytail/);
   assert.match(r.stdout, /DRY-RUN: npx -y skills@1\.7\.0 add .* -a opencode -g -y/);
@@ -273,7 +287,7 @@ test('real run skips an absent host, runs the rest, exits non-zero', () => {
   assert.notEqual(r.status, 0);
   assert.match(r.stdout + r.stderr, /codex: binary not found, skipped/);
   assert.match(log, /pi install npm:pi-mcp-adapter/);
-  assert.match(log, new RegExp(`pi install ${repo}`));
+  assert.match(log, /pi install git:github.com\/kevinold\/overdrive/);
   assert.doesNotMatch(log, /^codex /m);
   assert.ok(existsSync(join(home, '.pi/agent/mcp.json')));
   assert.ok(existsSync(join(repo, '.compound-engineering/config.yaml'))); // seeded in the copy
