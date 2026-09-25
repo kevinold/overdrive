@@ -65,8 +65,13 @@ mcp_claude() {
   run claude mcp add --scope user codebase-memory-mcp -- mise exec "$CBM_TOOL" -- codebase-memory-mcp
 }
 mcp_codex_stdio() { run codex mcp add codebase-memory-mcp -- mise exec "$CBM_TOOL" -- codebase-memory-mcp; }
-mcp_copy() { # dest: install .mcp.json there only if absent (Pi and omp read the same mcpServers shape)
-  if [ -f "$1" ]; then echo "$1 exists. Leaving it untouched."; else run mkdir -p "${1%/*}"; run cp "$ROOT/.mcp.json" "$1"; fi
+# mcp_merge <dest> <src>: add the harness servers missing from an agent's global MCP config, so a
+# rerun delivers newly added servers. Servers and keys already there are left as they are.
+# ponytail: node, not jq; bootstrap already needs node and jq is not guaranteed.
+mcp_merge() {
+  local args=(--merge-mcp "$1" "${2:-$ROOT/.mcp.json}")
+  [ "$DRY_RUN" = 1 ] && args+=(--dry-run)
+  node "$ROOT/scripts/init-project.mjs" "${args[@]}" </dev/null || { FAILS+=("merge MCP into $1"); RC=1; }
 }
 
 bin_of() { if [ "$1" = claude-code ]; then echo claude; else echo "$1"; fi; }
@@ -128,8 +133,8 @@ if [ -n "$CHECK" ]; then
       probes+=("codex=codex-get:$WORK/codex-$srv.json")
     done
   else echo "codex: binary not found, registration not exercised"; fi
-  mcp_copy "$HOME/.pi/agent/mcp.json"; probes+=("pi=mcpServers:$HOME/.pi/agent/mcp.json")
-  mcp_copy "$HOME/.omp/agent/mcp.json"; probes+=("omp=mcpServers:$HOME/.omp/agent/mcp.json")
+  mcp_merge "$HOME/.pi/agent/mcp.json"; probes+=("pi=mcpServers:$HOME/.pi/agent/mcp.json")
+  mcp_merge "$HOME/.omp/agent/mcp.json"; probes+=("omp=mcpServers:$HOME/.omp/agent/mcp.json")
   probes+=("opencode=opencode:$ROOT/.opencode/opencode.json" "gemini=mcpServers:$ROOT/.gemini/settings.json" "cursor=mcpServers:$ROOT/.mcp.json")
   HOME="$REAL_HOME" # servers launch with the real HOME, as each agent would run them
   run node "$ROOT/scripts/mcp-probe.mjs" --cwd "$WORK/project" "${probes[@]}"
@@ -232,11 +237,11 @@ for CUR_HOST in $SEL; do
       run pi install npm:pi-subagents
       run pi install npm:pi-mcp-adapter
       run pi install npm:pi-ask-user # compound-engineering's recommended Pi companion for its blocking questions
-      mcp_copy "$HOME/.pi/agent/mcp.json" ;;
+      mcp_merge "$HOME/.pi/agent/mcp.json" ;;
     omp)
       if [ "$DEV" = 1 ]; then run omp plugin link "$ROOT"
       else run omp plugin marketplace add "$OVERDRIVE_REPO"; run omp plugin install overdrive@overdrive; fi
-      mcp_copy "$HOME/.omp/agent/mcp.json" ;;
+      mcp_merge "$HOME/.omp/agent/mcp.json" ;;
     opencode)
       echo "OpenCode: add to the \"plugin\" array in ~/.config/opencode/opencode.json:"
       echo "  \"plugin\": [${OC_PLUGINS} \"$OC_SELF\"]"
@@ -247,13 +252,11 @@ done
 echo "== skills (npx skills, commit-pinned) =="
 each_row skills_row
 
-# Cursor and Gemini: global MCP so every project gets both servers. Written only when the agent is
-# present and the file is absent; an existing file is left for you to merge.
+# Cursor and Gemini: global MCP so every project gets both servers, merged when the agent is present.
 echo "== MCP for Cursor / Gemini =="
 global_mcp() { # agent binary config-dir dest source
   if ! has "$2" && [ ! -d "$3" ]; then echo "$1: not found, skipped"
-  elif [ -f "$4" ]; then echo "$4 exists. Leaving it untouched; merge the mcpServers block from $5 by hand."
-  else run mkdir -p "$3"; run cp "$5" "$4"; fi
+  else mcp_merge "$4" "$5"; fi
 }
 global_mcp Cursor cursor "$HOME/.cursor" "$HOME/.cursor/mcp.json" "$ROOT/.mcp.json"
 global_mcp Gemini gemini "$HOME/.gemini" "$HOME/.gemini/settings.json" "$ROOT/.gemini/settings.json"
