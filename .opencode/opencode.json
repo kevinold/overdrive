@@ -8,7 +8,7 @@
     },
     "codebase-memory-mcp": {
       "type": "local",
-      "command": ["mise", "exec", "--", "codebase-memory-mcp"]
+      "command": ["mise", "exec", "github:DeusData/codebase-memory-mcp@0.11.0", "--", "codebase-memory-mcp"]
     }
   }
 }

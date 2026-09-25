@@ -3,23 +3,21 @@
 A harness starter that assembles the right set of tools — plugins, MCP servers,
 model "gears," hooks — to get **more out of every token**. Higher gear, not a bigger budget.
 
-## Portability boundary (read this first)
+## Per-host support
 
-**What ports to any coding agent:** these AGENTS.md conventions and the two MCP servers
-(`context7`, `codebase-memory-mcp`). Any agent that reads `AGENTS.md` and speaks MCP gets
-the context contract and the memory layer.
-
-**What is Claude-Code-specific:** the plugin / skill / hook acceleration. The gears table,
-the SDLC command flow (`ce-plan`, `ce-work`, `ce-code-review`, `/ce-compound`), and the
-hook automation run under Claude Code. Codex / Cursor / Gemini / OpenCode get AGENTS.md +
-the MCP servers — **not** the full harness. Do not assume parity.
+Full harness (skills, hooks, MCP, gears) on Claude Code, Codex, OpenCode, Pi, and omp; each
+host gets it by its own mechanism, with gaps. Cursor and Gemini get this file + the two MCP
+servers. What each host gets: `docs/capability-matrix.md`.
 
 ## Setup
 
 ```bash
 git clone git@github.com:kevinold/overdrive.git && cd overdrive
-bash scripts/bootstrap.sh            # installs the whole harness
-bash scripts/bootstrap.sh --dry-run  # prints every action, changes nothing
+bash scripts/bootstrap.sh                # every agent host found on PATH
+bash scripts/bootstrap.sh --agent codex  # or pick hosts: claude-code,codex,opencode,pi,omp
+bash scripts/bootstrap.sh --dry-run      # prints every action, changes nothing
+bash scripts/bootstrap.sh --check <project>  # preview skills, MCP, and --init on a throwaway copy
+bash scripts/bootstrap.sh --init <project>   # overlay the harness onto a project
 ```
 
 Review `docs/harness-inventory.md` and `docs/install.md` before running bootstrap on a
@@ -29,13 +27,13 @@ fresh clone. `bootstrap.sh --dry-run` prints every action without mutating anyth
 
 Three gears, never one model:
 
-- **Driver (worker)** — Opus 4.8 or Sonnet, set per session. Does the typing/building.
-- **Overdrive (reasoning)** — Fable escalates for plan + brainstorm via `plan_model: fable`
-  / `brainstorm_model: fable` in `.compound-engineering/config.yaml`.
-- **Peer (second opinion)** — `cross_model_peer: codex`. A *different*, differently-trained
-  model adversarially re-reviews. Never trust one model's output.
+- **Driver (worker)** — the everyday model, set per session. Does the typing/building.
+- **Overdrive (reasoning)** — a stronger model escalates for plan + brainstorm
+  (compound-engineering: `plan_model` / `brainstorm_model`).
+- **Peer (second opinion)** — `cross_model_peer`. A *different*, differently-trained model
+  adversarially re-reviews. Never trust one model's output.
 
-`~/.claude/settings.json` `model` is the fallback/subagent default, not the driver.
+Each host sets gears its own way: `docs/capability-matrix.md` (Gears per host).
 
 ## House style
 

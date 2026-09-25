@@ -1,0 +1,10 @@
+# Dependency catalog: how bootstrap.sh installs each dependency on each host. Only what the harness uses: add a row to bring another pack in.
+# Tab-separated; '#' lines are comments. '-' marks a not-applicable ref/skills/note cell (keeps read -r from collapsing empty fields).
+# ref: 40-hex commit that skills-method installs pin to (npx skills add <source>#<ref>).
+# skills: '*' (all) or a space-separated list of skill names, each passed as its own -s argument.
+# Host columns: native (host plugin install) | skills (npx skills -a <host> -g) | none (skipped, see note). omp is never skills (no npx skills target).
+dep	marketplace	source	ref	skills	claude-code	codex	opencode	pi	omp	note
+compound-engineering	compound-engineering-plugin	EveryInc/compound-engineering-plugin	-	-	native	native	native	native	native	ships every host's manifest
+agent-browser	agent-browser	vercel-labs/agent-browser	e4e2fe8633be35e2e4567a464604e6a314e74279	agent-browser	native	skills	skills	skills	native	needs the agent-browser binary; other 5 repo skills not pinned
+caveman	caveman	JuliusBrussee/caveman	655b7d9c5431f822264b7732e9901c5578ac84cf	caveman caveman-commit caveman-review	native	skills	skills	skills	native	house-style lens + commit/review variants only; always-on hook Claude-only
+ponytail	ponytail	DietrichGebert/ponytail	-	-	native	native	native	native	native	hooks on Claude/Codex/Pi/OpenCode natively

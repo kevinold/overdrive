@@ -6,7 +6,7 @@
     },
     "codebase-memory-mcp": {
       "command": "mise",
-      "args": ["exec", "--", "codebase-memory-mcp"]
+      "args": ["exec", "github:DeusData/codebase-memory-mcp@0.11.0", "--", "codebase-memory-mcp"]
     }
   }
 }

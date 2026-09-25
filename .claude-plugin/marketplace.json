@@ -1,0 +1,8 @@
+{
+  "name": "overdrive",
+  "owner": { "name": "Kevin Old" },
+  "metadata": { "description": "A harness that assembles the right set of tools to get more out of every token." },
+  "plugins": [
+    { "name": "overdrive", "description": "A harness that assembles the right set of tools to get more out of every token.", "source": "./" }
+  ]
+}
