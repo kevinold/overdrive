@@ -50,13 +50,27 @@ function mergeJson(file, fn, { dryRun = false, log = console.log, label = file, 
   if (!dryRun) put(file, `${JSON.stringify(next, null, 2)}\n`);
 }
 
-// Add src's MCP servers missing from dest. Other keys and existing servers stay as they are.
+// Servers in `have` that still use overdrive's own launch and differ from `want` only by a pinned
+// version (`pkg@1.0` vs `pkg@2.0`): an older overdrive release's entry, safe to move to the new pin.
+// Any other difference is the user's customization and is left alone.
+const unpin = (s) => JSON.stringify([s?.command, s?.args?.map((a) => a.replace(/@[^@/]+$/, ''))]);
+export const pinBumps = (have, want) => Object.keys(want).filter((k) =>
+  have[k] && want[k].args && unpin(have[k]) === unpin(want[k]) && JSON.stringify(have[k].args) !== JSON.stringify(want[k].args));
+
+// Add src's MCP servers missing from dest and move overdrive's own entries to new pins. Other keys,
+// other fields of a bumped entry, and servers the user customized stay as they are.
 // ponytail: a fresh dest gets mcpServers only (Gemini's contextFileName is its default anyway).
 export function mergeMcp(dest, src, opts = {}) {
   const servers = readJson(src).mcpServers;
   const have = readJson(dest)?.mcpServers ?? {};
   const added = Object.keys(servers).filter((k) => !(k in have));
-  mergeJson(dest, (c) => ({ ...c, mcpServers: addServers(c.mcpServers ?? {}, servers) }), { ...opts, note: ` (add ${added.join(', ')})` });
+  const bumped = pinBumps(have, servers);
+  const note = [added.length && `add ${added.join(', ')}`, bumped.length && `update ${bumped.join(', ')}`].filter(Boolean).join('; ');
+  mergeJson(dest, (c) => {
+    const m = addServers(c.mcpServers ?? {}, servers);
+    for (const k of bumped) m[k] = { ...m[k], args: servers[k].args };
+    return { ...c, mcpServers: m };
+  }, { ...opts, note: ` (${note})` });
 }
 
 // Verification commands the agents run before calling work done, from the project's own stack.
@@ -197,6 +211,11 @@ if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.me
   if (args[0] === '--merge-mcp') { // bootstrap.sh: add missing harness MCP servers to an agent's global config
     const [dest, src] = args.slice(1).filter((a) => !a.startsWith('--'));
     mergeMcp(dest, src, { dryRun: args.includes('--dry-run') });
+    process.exit(0);
+  }
+  if (args[0] === '--pin-bumps') { // bootstrap.sh: names in an agent's config (e.g. ~/.claude.json) due a new pin
+    const [file, src] = args.slice(1);
+    for (const k of pinBumps(readJson(file)?.mcpServers ?? {}, readJson(src).mcpServers)) console.log(k);
     process.exit(0);
   }
   const dir = args.find((a) => !a.startsWith('--'));

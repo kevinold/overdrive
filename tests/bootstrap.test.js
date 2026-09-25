@@ -355,3 +355,15 @@ test('rerun: existing Gemini settings keep their keys and servers and gain the h
   assert.deepEqual(Object.keys(got.mcpServers), ['mine', 'context7', 'codebase-memory-mcp']);
   assert.equal(got.mcpServers.context7.httpUrl, 'https://mcp.context7.com/mcp');
 });
+
+test('claude-code: an older overdrive pin is removed before re-adding; a current one is left', () => {
+  const pin = (v) => ({ mcpServers: { 'codebase-memory-mcp': { type: 'stdio', command: 'mise', args: ['exec', `github:DeusData/codebase-memory-mcp@${v}`, '--', 'codebase-memory-mcp'], env: {} } } });
+  const old = seededHome({ '.claude.json': pin('0.0.1') });
+  const L = lines(boot(['--dry-run', '--agent', 'claude-code'], { home: old }).stdout);
+  const rm = L.indexOf('DRY-RUN: claude mcp remove --scope user codebase-memory-mcp');
+  assert.ok(rm >= 0, L.join('\n'));
+  assert.ok(rm < L.findIndex((l) => l.startsWith('DRY-RUN: claude mcp add --scope user codebase-memory-mcp')));
+  const pinNow = readFileSync(join(ROOT, 'scripts/bootstrap.sh'), 'utf8').match(/codebase-memory-mcp@([\d.]+)"/)[1];
+  const cur = seededHome({ '.claude.json': pin(pinNow) });
+  assert.doesNotMatch(boot(['--dry-run', '--agent', 'claude-code'], { home: cur }).stdout, /claude mcp remove/);
+});

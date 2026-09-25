@@ -233,3 +233,26 @@ test('importing the module with no script path (process.argv[1] undefined) does 
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.match(r.stdout, /ok/);
 });
+
+test('mergeMcp moves overdrive\'s own entry to a new pin, keeps its other fields, and leaves customized entries alone', () => {
+  const want = { mcpServers: { cbm: { command: 'mise', args: ['exec', 'github:o/cbm@2.0', '--', 'cbm'] }, other: { command: 'mise', args: ['exec', 'github:o/x@2.0'] } } };
+  const d = project({ 'src.json': want,
+    'dest.json': { mcpServers: { cbm: { command: 'mise', args: ['exec', 'github:o/cbm@1.0', '--', 'cbm'], env: { A: '1' } }, other: { command: 'npx', args: ['x'] } } } });
+  const logs = [];
+  mergeMcp(join(d, 'dest.json'), join(d, 'src.json'), { log: (l) => logs.push(l) });
+  const got = JSON.parse(read(d, 'dest.json')).mcpServers;
+  assert.deepEqual(got.cbm, { command: 'mise', args: ['exec', 'github:o/cbm@2.0', '--', 'cbm'], env: { A: '1' } });
+  assert.deepEqual(got.other, { command: 'npx', args: ['x'] }, 'a customized launch is not overdrive\'s to change');
+  assert.match(logs[0], /^update .*dest\.json \(update cbm\)$/);
+});
+
+test('--pin-bumps lists servers whose overdrive-shaped launch only differs by version', () => {
+  const d = project({ 'src.json': { mcpServers: { cbm: { command: 'mise', args: ['exec', 'github:o/cbm@2.0'] }, c7: { url: 'u' } } },
+    'claude.json': { mcpServers: { cbm: { type: 'stdio', command: 'mise', args: ['exec', 'github:o/cbm@1.0'], env: {} }, c7: { type: 'http', url: 'old' } } } });
+  const r = spawnSync(process.execPath, [join(ROOT, 'scripts/init-project.mjs'), '--pin-bumps', join(d, 'claude.json'), join(d, 'src.json')], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.equal(r.stdout, 'cbm\n');
+  const none = spawnSync(process.execPath, [join(ROOT, 'scripts/init-project.mjs'), '--pin-bumps', join(d, 'missing.json'), join(d, 'src.json')], { encoding: 'utf8' });
+  assert.equal(none.status, 0, none.stderr);
+  assert.equal(none.stdout, '');
+});

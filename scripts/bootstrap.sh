@@ -61,6 +61,11 @@ run() {
 
 # MCP wiring, shared by the real run and --check. User scope, so every project gets the servers.
 mcp_claude() {
+  # `claude mcp add` keeps an existing server, so drop overdrive's entries still on an older pin first.
+  local s
+  for s in $(node "$ROOT/scripts/init-project.mjs" --pin-bumps "$HOME/.claude.json" "$ROOT/.mcp.json" </dev/null); do
+    run claude mcp remove --scope user "$s"
+  done
   run claude mcp add --scope user --transport http context7 "$CONTEXT7_URL"
   run claude mcp add --scope user codebase-memory-mcp -- mise exec "$CBM_TOOL" -- codebase-memory-mcp
 }
