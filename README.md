@@ -23,6 +23,26 @@ The first run sets up your agents, once per machine. `--init` then adds the harn
 project. It works on an existing repo, and on a new one right after `cargo new` or `npm create`.
 See [Use it in a project](docs/install.md#use-it-in-a-project).
 
+### How overdrive installs itself
+
+overdrive is a plugin too, published from this GitHub repo. Bootstrap points each agent's own
+plugin manager at `kevinold/overdrive`. The agent then fetches the repo into its plugin cache
+and reads the manifest meant for it:
+
+| Agent | Command bootstrap runs | Manifest it reads |
+|---|---|---|
+| Claude Code | `claude plugin marketplace add kevinold/overdrive` + `claude plugin install overdrive@overdrive` | `.claude-plugin/` |
+| Codex | `codex plugin marketplace add kevinold/overdrive` + `codex plugin add overdrive@overdrive` | `.agents/plugins/marketplace.json` + `.codex-plugin/` |
+| OpenCode | prints `"overdrive@git+https://github.com/kevinold/overdrive"` for its `plugin` array | `package.json` `main` |
+| Pi | `pi install git:github.com/kevinold/overdrive` | `package.json` `pi` |
+| omp | `omp plugin marketplace add kevinold/overdrive` + `omp plugin install overdrive@overdrive` | `.omp-plugin/marketplace.json` |
+
+Every manifest points at the same `skills/`, `agents/`, and `hooks/`. Your clone is only the
+installer, so after bootstrap you can move or delete it. Update overdrive with each agent's own
+update command (e.g. `claude plugin update overdrive@overdrive`, `omp plugin upgrade
+overdrive@overdrive`), or rerun bootstrap. Working on overdrive itself? `--dev` installs from
+your clone's path instead, so local edits take effect.
+
 Review `docs/install.md` and `docs/harness-inventory.md` before running bootstrap on a fresh
 clone — it adds third-party marketplaces and MCP servers.
 
