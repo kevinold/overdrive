@@ -3,7 +3,7 @@
 //   node scripts/init-project.mjs <project-dir> [--dry-run]
 // Writes only what is absent, plus one managed block in AGENTS.md that a rerun replaces.
 // Never touches content outside that block.
-import { existsSync, lstatSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, lstatSync, mkdirSync, readFileSync, realpathSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { sections } from '../hooks/lib.js';
@@ -187,7 +187,8 @@ export function initProject(dir, { dryRun = false, projectPlugins = false, log =
   log('Codex and omp have no committable project plugin config: each teammate runs bootstrap.sh (see docs/install.md "Install options").');
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) {
+// realpath: import.meta.url is symlink-resolved (macOS /var -> /private/var, npx caches), argv[1] is not.
+if (realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
   if (args[0] === '--merge-mcp') { // bootstrap.sh: add missing harness MCP servers to an agent's global config
     const [dest, src] = args.slice(1).filter((a) => !a.startsWith('--'));
