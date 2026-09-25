@@ -219,7 +219,7 @@ bash scripts/bootstrap.sh --agent pi
 Runs `pi install git:github.com/<owner/repo>` for compound-engineering and ponytail (Pi has no
 marketplaces), `pi install git:github.com/kevinold/overdrive` for overdrive, `pi install npm:pi-subagents`,
 `pi install npm:pi-mcp-adapter`, `pi install npm:pi-ask-user` (compound-engineering asks blocking questions through it), and pinned `npx skills … -a pi -g -y` packs. For
-`~/.pi/agent/mcp.json`, bootstrap adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are.
+`~/.pi/agent/mcp.json`, bootstrap adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin.
 
 Manual: restart pi.
 
@@ -236,7 +236,7 @@ every dependency with skills, then `omp plugin marketplace add kevinold/overdriv
 real run (Assumptions A1, A2 in `docs/capability-matrix.md`).
 
 For `~/.omp/agent/mcp.json` (omp's user MCP config, same `mcpServers` shape), bootstrap
-adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are. omp also imports servers from `~/.claude.json` and
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. omp also imports servers from `~/.claude.json` and
 `~/.codex/config.toml`.
 
 Manual: `omp config set marketplace.autoUpdate auto`, then restart omp.
@@ -248,7 +248,7 @@ Uninstall: `omp plugin uninstall overdrive@overdrive` per `omp plugin --help` (u
 `.cursor/rules/overdrive.mdc` (frontmatter `alwaysApply`) points Cursor at `AGENTS.md`, which
 Cursor also reads natively. When Cursor is present (`cursor` on `PATH` or `~/.cursor/` exists),
 bootstrap merges `.mcp.json` into `~/.cursor/mcp.json` so every project gets both MCP servers: it
-adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are. Not verified on a
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. Not verified on a
 real Cursor.
 
 ## Gemini
@@ -256,5 +256,5 @@ real Cursor.
 `.gemini/settings.json` sets `GEMINI.md` as the context file and declares the two MCP
 servers for this clone. When Gemini is present (`gemini` on `PATH` or `~/.gemini/` exists),
 bootstrap merges its `mcpServers` into `~/.gemini/settings.json` for every project: it
-adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are. `GEMINI.md` points back at `AGENTS.md`. Not
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. `GEMINI.md` points back at `AGENTS.md`. Not
 verified on a real Gemini.

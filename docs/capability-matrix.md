@@ -52,7 +52,7 @@ is no unifying config.
 
 ### Claude Code
 
-`.compound-engineering/config.yaml` (seeded from `config.example.yaml`):
+`.compound-engineering/config.yaml` (seeded from `config.example.yaml`, Compound Engineering's own template, where every key starts commented out; uncomment these to turn the gears on):
 
 ```yaml
 plan_model: fable        # reasoning gear for ce-plan (elevation verified on Claude Code only)

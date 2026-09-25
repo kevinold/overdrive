@@ -63,11 +63,12 @@ Nothing updates on its own. Rerun the command for the kind of change:
 | A new MCP server | `npx -y github:kevinold/overdrive` (adds it to Claude, Codex, Pi, omp, Cursor, and Gemini configs that lack it) |
 | The harness sections `--init` writes into `AGENTS.md` | `npx -y github:kevinold/overdrive --init .` in each project, then commit |
 | Plugins and MCP recorded with `--project-plugins` | `npx -y github:kevinold/overdrive --init . --project-plugins` in each project, then commit |
+| New Compound Engineering config keys | Nothing reruns this: `--init` seeds `.compound-engineering/config.yaml` once and never touches it again. Compare yours with the latest [upstream template](https://github.com/EveryInc/compound-engineering-plugin/blob/main/.compound-engineering/config.example.yaml) by hand |
 
-Rerunning is safe: anything already installed is skipped. Bootstrap never overwrites a server
-you already have, so a changed launch command for an existing server (say, a new
-`codebase-memory-mcp` pin) doesn't propagate. Remove that server from the agent's config (for
-Claude Code, `claude mcp remove <name>`), then rerun.
+Rerunning is safe: anything already installed is skipped. A new version pin reaches overdrive's own
+MCP entries (e.g. `codebase-memory-mcp@0.11.0` → a newer pin). Any other server you already
+have is never overwritten, including one you customized. To take overdrive's version of it,
+remove it from the agent's config (for Claude Code, `claude mcp remove <name>`), then rerun.
 
 ## Model gears
 
