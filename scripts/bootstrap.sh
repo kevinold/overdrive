@@ -10,12 +10,13 @@ VALID="claude-code codex opencode pi omp"
 CBM_TOOL="github:DeusData/codebase-memory-mcp@0.11.0" # keep in sync with mise.toml (tests/mcp-probe.test.js)
 CONTEXT7_URL="https://mcp.context7.com/mcp"
 OVERDRIVE_REPO="kevinold/overdrive" # overdrive installs itself from GitHub, so the clone can move or go away
-usage() { echo "usage: bootstrap.sh [--dry-run] [--dev] [--agent <id>[,<id>]]... | --init <project-dir> | --check <project-dir>  ids: $VALID"; }
+usage() { echo "usage: bootstrap.sh [--dry-run] [--dev] [--agent <id>[,<id>]]... | --init <project-dir> [--project-plugins] | --check <project-dir>  ids: $VALID"; }
 
 DRY_RUN=0
 REQ=""
 CHECK=""
 INIT=""
+PROJECT_PLUGINS=0
 DEV=0 # --dev: install overdrive itself from this clone instead of GitHub (for working on overdrive)
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -27,6 +28,7 @@ while [ $# -gt 0 ]; do
     --init) [ $# -ge 2 ] || { usage >&2; exit 2; }; INIT="$2"; shift ;;
     --init=*) INIT="${1#--init=}" ;;
     --dev) DEV=1 ;;
+    --project-plugins) PROJECT_PLUGINS=1 ;;
     -h|--help) usage; exit 0 ;;
     *) echo "unknown flag: $1" >&2; usage >&2; exit 2 ;;
   esac
@@ -71,7 +73,10 @@ warn() { echo "warning: $*" >&2; }
 # GEMINI.md imports, gears config, docs/solutions). Only writes what is absent; reruns refresh the block.
 if [ -n "$INIT" ]; then
   [ -d "$INIT" ] || { echo "--init: not a directory: $INIT" >&2; exit 2; }
-  if [ "$DRY_RUN" = 1 ]; then node "$ROOT/scripts/init-project.mjs" "$INIT" --dry-run; else node "$ROOT/scripts/init-project.mjs" "$INIT"; fi
+  args=("$INIT")
+  [ "$DRY_RUN" = 1 ] && args+=(--dry-run)
+  [ "$PROJECT_PLUGINS" = 1 ] && args+=(--project-plugins)
+  node "$ROOT/scripts/init-project.mjs" "${args[@]}"
   exit $?
 fi
 
@@ -126,7 +131,7 @@ if [ -n "$CHECK" ]; then
   run node "$ROOT/scripts/mcp-probe.mjs" --cwd "$WORK/project" "${probes[@]}"
 
   echo "== check: --init overlay on the copy =="
-  run node "$ROOT/scripts/init-project.mjs" "$WORK/project"
+  run node "$ROOT/scripts/init-project.mjs" "$WORK/project" --project-plugins
   [ "$DRY_RUN" = 1 ] || echo "review the result: $WORK/project/AGENTS.md"
   if [ ${#FAILS[@]} -gt 0 ]; then echo "== Failures =="; for f in "${FAILS[@]}"; do echo "  $f"; done; fi
   exit "$RC"

@@ -21,7 +21,10 @@ bash scripts/bootstrap.sh --init ~/code/app   # overlay the harness onto a proje
 
 The first run sets up your agents, once per machine. `--init` then adds the harness to each
 project. It works on an existing repo, and on a new one right after `cargo new` or `npm create`.
-See [Use it in a project](docs/install.md#use-it-in-a-project).
+Add `--project-plugins` to also record the plugins and MCP servers in the repo's own config, so
+teammates' agents offer to install them when they open it. See
+[Install options](docs/install.md#install-options) for what each agent supports, and
+[Use it in a project](docs/install.md#use-it-in-a-project).
 
 ### How overdrive installs itself
 

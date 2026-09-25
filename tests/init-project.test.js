@@ -114,7 +114,7 @@ test('existing gears config is untouched; dry-run writes nothing', () => {
   const logs = [];
   initProject(dry, { dryRun: true, log: (l) => logs.push(l) });
   assert.ok(!existsSync(join(dry, 'AGENTS.md')) && !existsSync(join(dry, 'CLAUDE.md')));
-  assert.ok(logs.every((l) => l.startsWith('DRY-RUN: ')), logs.join('\n'));
+  assert.ok(logs.filter((l) => !l.startsWith('optional:')).every((l) => l.startsWith('DRY-RUN: ')), logs.join('\n'));
 });
 
 test('bootstrap.sh --init delegates to the overlay and rejects a missing dir', () => {
@@ -123,4 +123,67 @@ test('bootstrap.sh --init delegates to the overlay and rejects a missing dir', (
   assert.equal(r.status, 0, r.stdout + r.stderr);
   assert.ok(existsSync(join(d, 'AGENTS.md')));
   assert.equal(spawnSync('/bin/bash', [join(ROOT, 'scripts/bootstrap.sh'), '--init', '/nonexistent/od'], { encoding: 'utf8' }).status, 2);
+});
+
+const json = (d, f) => JSON.parse(read(d, f));
+const PROJECT_FILES = ['.claude/settings.json', '.pi/settings.json', 'opencode.json', '.mcp.json', '.cursor/mcp.json', '.gemini/settings.json'];
+
+test('plain --init writes no plugin config and offers --project-plugins', () => {
+  const d = project();
+  const logs = [];
+  initProject(d, { log: (l) => logs.push(l) });
+  for (const f of PROJECT_FILES) assert.ok(!existsSync(join(d, f)), f);
+  assert.ok(logs.some((l) => l.includes('--project-plugins')), logs.join('\n'));
+});
+
+test('--project-plugins records every harness plugin for Claude Code, Pi, and OpenCode, plus project MCP', () => {
+  const d = project();
+  initProject(d, { ...quiet, projectPlugins: true });
+  const claude = json(d, '.claude/settings.json');
+  for (const [mkt, repo] of [['compound-engineering-plugin', 'EveryInc/compound-engineering-plugin'], ['agent-browser', 'vercel-labs/agent-browser'], ['caveman', 'JuliusBrussee/caveman'], ['ponytail', 'DietrichGebert/ponytail'], ['overdrive', 'kevinold/overdrive']]) {
+    assert.deepEqual(claude.extraKnownMarketplaces[mkt], { source: { source: 'github', repo } }, mkt);
+  }
+  for (const p of ['compound-engineering@compound-engineering-plugin', 'agent-browser@agent-browser', 'caveman@caveman', 'ponytail@ponytail', 'overdrive@overdrive']) {
+    assert.equal(claude.enabledPlugins[p], true, p);
+  }
+  assert.deepEqual(json(d, '.pi/settings.json').packages, [
+    'git:github.com/EveryInc/compound-engineering-plugin', 'git:github.com/DietrichGebert/ponytail', 'git:github.com/kevinold/overdrive',
+    'npm:pi-subagents', 'npm:pi-mcp-adapter', 'npm:pi-ask-user']);
+  const oc = json(d, 'opencode.json');
+  assert.deepEqual(oc.plugin, ['compound-engineering@git+https://github.com/EveryInc/compound-engineering-plugin', 'ponytail@git+https://github.com/DietrichGebert/ponytail', 'overdrive@git+https://github.com/kevinold/overdrive']);
+  assert.deepEqual(Object.keys(oc.mcp), ['context7', 'codebase-memory-mcp']);
+  for (const f of ['.mcp.json', '.cursor/mcp.json']) assert.deepEqual(json(d, f), json(ROOT, '.mcp.json'), f);
+  assert.deepEqual(json(d, '.gemini/settings.json').mcpServers, json(ROOT, '.gemini/settings.json').mcpServers);
+});
+
+test('--project-plugins merges into existing files without overriding the team\'s choices, and reruns cleanly', () => {
+  const d = project({
+    '.claude/settings.json': { permissions: { allow: ['Bash(npm test)'] }, enabledPlugins: { 'ponytail@ponytail': false } },
+    '.pi/settings.json': { packages: ['npm:pi-subagents'], theme: 'dark' },
+    'opencode.json': { plugin: ['my-plugin'], mcp: { mine: { type: 'remote', url: 'https://m' } } },
+    '.mcp.json': { mcpServers: { mine: { command: 'x' } } },
+  });
+  initProject(d, { ...quiet, projectPlugins: true });
+  initProject(d, { ...quiet, projectPlugins: true });
+  const claude = json(d, '.claude/settings.json');
+  assert.deepEqual(claude.permissions, { allow: ['Bash(npm test)'] });
+  assert.equal(claude.enabledPlugins['ponytail@ponytail'], false, 'an explicit false stays false');
+  assert.equal(claude.enabledPlugins['compound-engineering@compound-engineering-plugin'], true);
+  const pi = json(d, '.pi/settings.json');
+  assert.equal(pi.theme, 'dark');
+  assert.equal(pi.packages.filter((p) => p === 'npm:pi-subagents').length, 1, 'no duplicates');
+  const oc = json(d, 'opencode.json');
+  assert.equal(oc.plugin[0], 'my-plugin');
+  assert.ok(oc.mcp.mine && oc.mcp.context7 && oc.mcp['codebase-memory-mcp']);
+  const mcp = json(d, '.mcp.json');
+  assert.ok(mcp.mcpServers.mine && mcp.mcpServers.context7 && mcp.mcpServers['codebase-memory-mcp']);
+});
+
+test('--project-plugins dry-run writes nothing; bootstrap passes the flag through', () => {
+  const d = project();
+  initProject(d, { log: () => {}, dryRun: true, projectPlugins: true });
+  for (const f of PROJECT_FILES) assert.ok(!existsSync(join(d, f)), f);
+  const r = spawnSync('/bin/bash', [join(ROOT, 'scripts/bootstrap.sh'), '--init', d, '--project-plugins'], { encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stdout + r.stderr);
+  assert.ok(existsSync(join(d, '.claude/settings.json')));
 });

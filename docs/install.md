@@ -75,6 +75,37 @@ Bootstrap installs overdrive itself from GitHub (`kevinold/overdrive`), so the c
 or go away afterwards. Working on overdrive itself? Add `--dev` to install from this clone's
 path instead.
 
+## Install options
+
+Two parts, three ways to get them:
+
+- **Machine-wide (every project):** `bash scripts/bootstrap.sh` once per machine. It installs the
+  plugins, skills, hooks, and MCP servers at user scope on each agent it finds.
+- **Project overlay:** `bash scripts/bootstrap.sh --init <project>`, once per project, committed.
+  Adds the conventions, gears config, and `docs/solutions/`. See *Use it in a project* below.
+- **Project-scoped plugins (optional):** `bash scripts/bootstrap.sh --init <project> --project-plugins`.
+  Also records the harness plugins and MCP servers in committable project files, so a teammate's
+  agent offers to install them when they open the repo, before they have run bootstrap.
+
+What each agent supports:
+
+| Agent | Machine-wide (`bootstrap.sh`) | Project-scoped, committed (`--project-plugins`) | Project-scoped by hand, per person |
+|---|---|---|---|
+| Claude Code | `claude plugin install … ` (user scope) + `claude mcp add --scope user` | `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`; Claude prompts on trust) + `.mcp.json` | `claude plugin install --scope project <plugin>@<marketplace>` |
+| Codex | `codex plugin add …` + `codex mcp add` (global `~/.codex/config.toml`) | not supported (Codex plugins are user-scope only) | none; run `bootstrap.sh` |
+| OpenCode | prints a `plugin` snippet for `~/.config/opencode/opencode.json` | `opencode.json` at the project root (`plugin` + `mcp`) | edit the project `opencode.json` |
+| Pi | `pi install …` (global) + `~/.pi/agent/mcp.json` | `.pi/settings.json` `packages` (Pi installs them when you trust the project) + `.mcp.json` | `pi install -l <source>` |
+| omp | `omp plugin install …` (user) + `~/.omp/agent/mcp.json` | `.mcp.json` only; omp's project plugin file is install state, not meant for commits | `omp plugin install --scope project <plugin>@<marketplace>` |
+| Cursor | `~/.cursor/mcp.json` when absent | `.cursor/mcp.json` | edit `.cursor/mcp.json` |
+| Gemini | `~/.gemini/settings.json` when absent | `.gemini/settings.json` (`mcpServers`) | edit `.gemini/settings.json` |
+
+`--project-plugins` merges into files that already exist. It adds missing entries and never
+changes a value the project set; a plugin set to `false` stays disabled. It also ignores Pi's
+project package cache (`.pi/npm/`) in `.gitignore`. Skills installed through `npx skills` (the
+caveman lens and agent-browser, for Codex, OpenCode, and Pi) stay machine-wide.
+`bootstrap.sh --check <project>` previews the overlay with `--project-plugins` on a throwaway
+copy.
+
 ## Use it in a project
 
 The steps above set up your agents once per machine. The harness also has a small per-project

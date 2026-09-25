@@ -15,6 +15,17 @@ const END = '<!-- overdrive:end -->';
 const BLOCK_RE = /<!-- overdrive:start[\s\S]*?<!-- overdrive:end -->/;
 const HARNESS_HEADINGS = ['## Model gears', '## House style', '## Egress disclosure (important)', '## The compounding loop'];
 
+const OVERDRIVE = { dep: 'overdrive', marketplace: 'overdrive', source: 'kevinold/overdrive' };
+const PI_COMPANIONS = ['npm:pi-subagents', 'npm:pi-mcp-adapter', 'npm:pi-ask-user'];
+
+// Catalog rows a host installs natively, plus overdrive itself.
+export function nativeFor(host) {
+  const lines = readFileSync(join(ROOT, 'harness/deps.tsv'), 'utf8').split('\n').filter((l) => l && !l.startsWith('#'));
+  const [head, ...rows] = lines.map((l) => l.split('\t'));
+  const col = head.indexOf(host);
+  return [...rows.filter((r) => r[col] === 'native').map(([dep, marketplace, source]) => ({ dep, marketplace, source })), OVERDRIVE];
+}
+
 const readJson = (f) => { try { return JSON.parse(readFileSync(f, 'utf8')); } catch { return null; } };
 
 // Verification commands the agents run before calling work done, from the project's own stack.
@@ -68,7 +79,7 @@ export function harnessBlock(dir) {
   ].join('\n');
 }
 
-export function initProject(dir, { dryRun = false, log = console.log } = {}) {
+export function initProject(dir, { dryRun = false, projectPlugins = false, log = console.log } = {}) {
   const act = (verb, rel, write) => {
     log(`${dryRun ? 'DRY-RUN: ' : ''}${verb} ${rel}`);
     if (!dryRun) write();
@@ -100,12 +111,60 @@ export function initProject(dir, { dryRun = false, log = console.log } = {}) {
     else act('create', rel, () => put(rel, readFileSync(join(ROOT, src), 'utf8')));
   }
 
-  // Keep per-developer gear overrides out of git.
+  // Keep per-developer gear overrides (and Pi's project package cache) out of git.
   const gi = join(dir, '.gitignore');
-  if (existsSync(gi) && !/config\.local\.yaml/.test(readFileSync(gi, 'utf8'))) {
-    act('update', '.gitignore (.compound-engineering/config.local.yaml)', () =>
-      writeFileSync(gi, `${readFileSync(gi, 'utf8').replace(/\s*$/, '')}\n.compound-engineering/config.local.yaml\n`));
+  const ignores = ['.compound-engineering/config.local.yaml', ...(projectPlugins ? ['.pi/npm/'] : [])];
+  if (existsSync(gi)) {
+    const missing = ignores.filter((i) => !readFileSync(gi, 'utf8').split('\n').includes(i));
+    if (missing.length) act('update', `.gitignore (${missing.join(', ')})`, () =>
+      writeFileSync(gi, `${readFileSync(gi, 'utf8').replace(/\s*$/, '')}\n${missing.join('\n')}\n`));
   }
+
+  if (!projectPlugins) {
+    log(`optional: record the harness plugins and MCP servers in this project so teammates' agents offer to install them: bootstrap.sh --init ${dir} --project-plugins`);
+    return;
+  }
+
+  // --project-plugins: committable, project-scoped plugin + MCP config. Merges: adds what is missing,
+  // never flips a value the project already set.
+  const mergeJson = (rel, fn) => {
+    const p = join(dir, rel);
+    const cur = existsSync(p) ? JSON.parse(readFileSync(p, 'utf8')) : null;
+    const next = fn(structuredClone(cur ?? {}));
+    if (cur && JSON.stringify(cur) === JSON.stringify(next)) return log(`unchanged ${rel}`);
+    act(cur ? 'update' : 'create', rel, () => put(rel, `${JSON.stringify(next, null, 2)}\n`));
+  };
+  const addServers = (into, from) => { for (const [k, v] of Object.entries(from)) into[k] ??= v; return into; };
+  const union = (list, add) => [...list, ...add.filter((x) => !list.includes(x))];
+
+  // Claude Code: teammates who trust the folder are prompted to add these marketplaces and plugins.
+  mergeJson('.claude/settings.json', (c) => {
+    c.extraKnownMarketplaces ??= {};
+    c.enabledPlugins ??= {};
+    for (const d of nativeFor('claude-code')) {
+      c.extraKnownMarketplaces[d.marketplace] ??= { source: { source: 'github', repo: d.source } };
+      c.enabledPlugins[`${d.dep}@${d.marketplace}`] ??= true;
+    }
+    return c;
+  });
+  // Pi: project packages (installed on first run in the project) plus the companions the harness needs.
+  mergeJson('.pi/settings.json', (c) => {
+    c.packages = union(c.packages ?? [], [...nativeFor('pi').map((d) => `git:github.com/${d.source}`), ...PI_COMPANIONS]);
+    return c;
+  });
+  // OpenCode: project opencode.json plugins + MCP.
+  const ocShipped = readJson(join(ROOT, '.opencode/opencode.json'));
+  mergeJson('opencode.json', (c) => {
+    c.$schema ??= ocShipped.$schema;
+    c.plugin = union(c.plugin ?? [], nativeFor('opencode').map((d) => `${d.dep}@git+https://github.com/${d.source}`));
+    c.mcp = addServers(c.mcp ?? {}, ocShipped.mcp);
+    return c;
+  });
+  // Project MCP: .mcp.json (Claude Code, Pi's adapter, omp), Cursor, Gemini.
+  const shipped = readJson(join(ROOT, '.mcp.json')).mcpServers;
+  for (const rel of ['.mcp.json', '.cursor/mcp.json']) mergeJson(rel, (c) => ({ ...c, mcpServers: addServers(c.mcpServers ?? {}, shipped) }));
+  mergeJson('.gemini/settings.json', (c) => ({ ...c, mcpServers: addServers(c.mcpServers ?? {}, readJson(join(ROOT, '.gemini/settings.json')).mcpServers) }));
+  log('Codex and omp have no committable project plugin config: each teammate runs bootstrap.sh (see docs/install.md "Install options").');
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
@@ -115,5 +174,5 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
     console.error(`--init: not a directory: ${dir ?? '(none)'}`);
     process.exit(2);
   }
-  initProject(dir, { dryRun: args.includes('--dry-run') });
+  initProject(dir, { dryRun: args.includes('--dry-run'), projectPlugins: args.includes('--project-plugins') });
 }
