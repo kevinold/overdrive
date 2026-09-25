@@ -292,3 +292,12 @@ test('real run skips an absent host, runs the rest, exits non-zero', () => {
   assert.ok(existsSync(join(home, '.pi/agent/mcp.json')));
   assert.ok(existsSync(join(repo, '.compound-engineering/config.yaml'))); // seeded in the copy
 });
+
+test('npx bin runs bootstrap from any cwd; --init . targets the caller\'s project', () => {
+  const proj = tmp('od-proj-');
+  const r = spawnSync(process.execPath, [join(ROOT, 'bin/overdrive.mjs'), '--init', '.', '--dry-run'], { cwd: proj, encoding: 'utf8' });
+  assert.equal(r.status, 0, r.stderr);
+  assert.match(r.stdout, /DRY-RUN: create AGENTS\.md/);
+  assert.ok(!existsSync(join(proj, 'AGENTS.md')), 'dry-run writes nothing');
+  assert.equal(JSON.parse(readFileSync(join(ROOT, 'package.json'), 'utf8')).bin.overdrive, './bin/overdrive.mjs');
+});
