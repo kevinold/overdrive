@@ -55,7 +55,8 @@ A real run writes to your global host state:
 - `~/.codex/config.toml` (marketplaces, plugins, MCP), `~/.codex/skills`
 - `~/.config/opencode/skills`
 - `~/.pi/agent/settings.json`, `~/.pi/agent/skills`, `~/.pi/agent/mcp.json`
-- omp's plugin cache
+- omp's plugin cache, `~/.omp/agent/mcp.json`
+- `~/.cursor/mcp.json` and `~/.gemini/settings.json` (`mcpServers` only), when Cursor / Gemini are present
 - `~/.agents/skills` (`npx skills` canonical copies)
 - `.compound-engineering/config.yaml` in the clone, seeded only if absent
 
@@ -95,10 +96,10 @@ What each agent supports:
 | Claude Code | `claude plugin install … ` (user scope) + `claude mcp add --scope user` | `.claude/settings.json` (`extraKnownMarketplaces` + `enabledPlugins`; Claude prompts on trust) + `.mcp.json` | `claude plugin install --scope project <plugin>@<marketplace>` |
 | Codex | `codex plugin add …` + `codex mcp add` (global `~/.codex/config.toml`) | not supported (Codex plugins are user-scope only) | none; run `bootstrap.sh` |
 | OpenCode | prints a `plugin` snippet for `~/.config/opencode/opencode.json` | `opencode.json` at the project root (`plugin` + `mcp`) | edit the project `opencode.json` |
-| Pi | `pi install …` (global) + `~/.pi/agent/mcp.json` | `.pi/settings.json` `packages` (Pi installs them when you trust the project) + `.mcp.json` | `pi install -l <source>` |
-| omp | `omp plugin install …` (user) + `~/.omp/agent/mcp.json` | `.mcp.json` only; omp's project plugin file is install state, not meant for commits | `omp plugin install --scope project <plugin>@<marketplace>` |
-| Cursor | `~/.cursor/mcp.json` when absent | `.cursor/mcp.json` | edit `.cursor/mcp.json` |
-| Gemini | `~/.gemini/settings.json` when absent | `.gemini/settings.json` (`mcpServers`) | edit `.gemini/settings.json` |
+| Pi | `pi install …` (global) + `~/.pi/agent/mcp.json` (missing servers merged in) | `.pi/settings.json` `packages` (Pi installs them when you trust the project) + `.mcp.json` | `pi install -l <source>` |
+| omp | `omp plugin install …` (user) + `~/.omp/agent/mcp.json` (missing servers merged in) | `.mcp.json` only; omp's project plugin file is install state, not meant for commits | `omp plugin install --scope project <plugin>@<marketplace>` |
+| Cursor | `~/.cursor/mcp.json` (missing servers merged in) | `.cursor/mcp.json` | edit `.cursor/mcp.json` |
+| Gemini | `~/.gemini/settings.json` (missing servers merged in) | `.gemini/settings.json` (`mcpServers`) | edit `.gemini/settings.json` |
 
 `--project-plugins` merges into files that already exist. It adds missing entries and never
 changes a value the project set; a plugin set to `false` stays disabled. It also ignores Pi's
@@ -217,8 +218,8 @@ bash scripts/bootstrap.sh --agent pi
 
 Runs `pi install git:github.com/<owner/repo>` for compound-engineering and ponytail (Pi has no
 marketplaces), `pi install git:github.com/kevinold/overdrive` for overdrive, `pi install npm:pi-subagents`,
-`pi install npm:pi-mcp-adapter`, `pi install npm:pi-ask-user` (compound-engineering asks blocking questions through it), and pinned `npx skills … -a pi -g -y` packs. Copies
-`.mcp.json` to `~/.pi/agent/mcp.json` only if that file is absent.
+`pi install npm:pi-mcp-adapter`, `pi install npm:pi-ask-user` (compound-engineering asks blocking questions through it), and pinned `npx skills … -a pi -g -y` packs. For
+`~/.pi/agent/mcp.json`, bootstrap adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin.
 
 Manual: restart pi.
 
@@ -234,8 +235,8 @@ Runs `omp plugin marketplace add <owner/repo>` + `omp plugin install <dep>@<mark
 every dependency with skills, then `omp plugin marketplace add kevinold/overdrive` + `omp plugin install overdrive@overdrive` for overdrive. Not verified on a
 real run (Assumptions A1, A2 in `docs/capability-matrix.md`).
 
-Copies `.mcp.json` to `~/.omp/agent/mcp.json` (omp's user MCP config, same `mcpServers` shape)
-only if that file is absent. omp also imports servers from `~/.claude.json` and
+For `~/.omp/agent/mcp.json` (omp's user MCP config, same `mcpServers` shape), bootstrap
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. omp also imports servers from `~/.claude.json` and
 `~/.codex/config.toml`.
 
 Manual: `omp config set marketplace.autoUpdate auto`, then restart omp.
@@ -246,14 +247,14 @@ Uninstall: `omp plugin uninstall overdrive@overdrive` per `omp plugin --help` (u
 
 `.cursor/rules/overdrive.mdc` (frontmatter `alwaysApply`) points Cursor at `AGENTS.md`, which
 Cursor also reads natively. When Cursor is present (`cursor` on `PATH` or `~/.cursor/` exists),
-bootstrap copies `.mcp.json` to `~/.cursor/mcp.json` so every project gets both MCP servers,
-only if that file is absent; otherwise merge its `mcpServers` block by hand. Not verified on a
+bootstrap merges `.mcp.json` into `~/.cursor/mcp.json` so every project gets both MCP servers: it
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. Not verified on a
 real Cursor.
 
 ## Gemini
 
 `.gemini/settings.json` sets `GEMINI.md` as the context file and declares the two MCP
 servers for this clone. When Gemini is present (`gemini` on `PATH` or `~/.gemini/` exists),
-bootstrap copies it to `~/.gemini/settings.json` for every project, only if that file is absent;
-otherwise merge its `mcpServers` block by hand. `GEMINI.md` points back at `AGENTS.md`. Not
+bootstrap merges its `mcpServers` into `~/.gemini/settings.json` for every project: it
+adds the harness servers missing from it (creating it if absent); servers and settings already there are left as they are, except that overdrive's own entries move to a new version pin. `GEMINI.md` points back at `AGENTS.md`. Not
 verified on a real Gemini.

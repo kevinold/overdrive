@@ -6,7 +6,7 @@
 // Formats: mcpServers (Claude, Cursor, Gemini, Pi, omp), opencode, codex-get (`codex mcp get --json`).
 // Prints one line per (agent, server); exits 1 if any probe fails. OVERDRIVE_MCP_OFFLINE=1 skips http probes.
 import { spawn } from 'node:child_process';
-import { readFileSync } from 'node:fs';
+import { readFileSync, realpathSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 const TIMEOUT_MS = Number(process.env.OVERDRIVE_MCP_TIMEOUT_MS || 45000);
@@ -114,4 +114,6 @@ export async function main(argv) {
   return failed ? 1 : 0;
 }
 
-if (process.argv[1] === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
+// realpath: import.meta.url is symlink-resolved (macOS /var -> /private/var, npx caches), argv[1] is not.
+// argv[1] is undefined when the module is imported rather than run as a script.
+if (process.argv[1] && realpathSync(process.argv[1]) === fileURLToPath(import.meta.url)) process.exitCode = await main(process.argv.slice(2));
